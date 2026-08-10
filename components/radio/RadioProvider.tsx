@@ -1,0 +1,362 @@
+"use client";
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type Context,
+  type ReactNode,
+} from "react";
+
+import { PLAYER, STORAGE_KEYS, TRACKS, YOUTUBE } from "@/lib/constants";
+import { clamp } from "@/lib/format";
+import type { PlaybackStatus, RadioActions, RadioState, Track } from "@/lib/types";
+import {
+  forceLowestQuality,
+  loadYouTubeApi,
+  parseVideoId,
+  PLAYER_ERROR_MESSAGES,
+  PLAYER_STATE,
+  type YTPlayer,
+} from "@/lib/youtube";
+
+/* -------------------------------------------------------------------------- */
+/* Store                                                                       */
+/* -------------------------------------------------------------------------- */
+
+const STATUS_BY_PLAYER_STATE: Record<number, PlaybackStatus> = {
+  [PLAYER_STATE.UNSTARTED]: "cued",
+  [PLAYER_STATE.ENDED]: "ended",
+  [PLAYER_STATE.PLAYING]: "playing",
+  [PLAYER_STATE.PAUSED]: "paused",
+  [PLAYER_STATE.BUFFERING]: "buffering",
+  [PLAYER_STATE.CUED]: "cued",
+};
+
+const INITIAL_STATE: RadioState = {
+  index: 0,
+  status: "connecting",
+  duration: 0,
+  volume: PLAYER.DEFAULT_VOLUME,
+  muted: false,
+  ready: false,
+  unlocked: false,
+  error: null,
+  errorStreak: 0,
+};
+
+type Action =
+  | { type: "ready" }
+  | { type: "unlock" }
+  | { type: "step"; delta: number }
+  | { type: "playerState"; playerState: number; duration: number }
+  | { type: "error"; message: string }
+  | { type: "setVolume"; volume: number }
+  | { type: "nudgeVolume"; delta: number }
+  | { type: "setMuted"; muted: boolean };
+
+function reducer(state: RadioState, action: Action): RadioState {
+  switch (action.type) {
+    case "ready":
+      return state.ready ? state : { ...state, ready: true, status: "cued" };
+
+    case "unlock":
+      return state.unlocked ? state : { ...state, unlocked: true, status: "buffering" };
+
+    case "step": {
+      const index = (state.index + action.delta + TRACKS.length) % TRACKS.length;
+      // Stepping is always a user gesture, so it doubles as the autoplay unlock.
+      return { ...state, index, duration: 0, error: null, unlocked: true, status: "buffering" };
+    }
+
+    case "playerState": {
+      const status = STATUS_BY_PLAYER_STATE[action.playerState] ?? state.status;
+      const duration = action.duration > 0 ? action.duration : state.duration;
+      // A frame of audio proves the track is fine — forgive the streak.
+      const errorStreak = status === "playing" ? 0 : state.errorStreak;
+      const error = status === "playing" ? null : state.error;
+      return { ...state, status, duration, errorStreak, error };
+    }
+
+    case "error":
+      return {
+        ...state,
+        status: "error",
+        error: action.message,
+        errorStreak: state.errorStreak + 1,
+      };
+
+    case "setVolume": {
+      const volume = clamp(Math.round(action.volume), 0, 100);
+      // Nudging the slider up off zero is an implicit un-mute.
+      return { ...state, volume, muted: volume === 0 ? state.muted : false };
+    }
+
+    case "nudgeVolume":
+      return reducer(state, { type: "setVolume", volume: state.volume + action.delta });
+
+    case "setMuted":
+      return { ...state, muted: action.muted };
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Contexts                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Split three ways on purpose. `progress` ticks four times a second, so it is
+ * isolated from the discrete state and from the action bag (which never
+ * changes identity) — only the seek bar re-renders on a tick.
+ */
+const StateContext = createContext<RadioState | null>(null);
+const ActionsContext = createContext<RadioActions | null>(null);
+const ProgressContext = createContext(0);
+
+function useRequiredContext<T>(context: Context<T | null>, name: string): T {
+  const value = useContext(context);
+  if (value === null) throw new Error(`${name} must be used inside <RadioProvider>`);
+  return value;
+}
+
+export const useRadioState = () => useRequiredContext(StateContext, "useRadioState");
+export const useRadioActions = () => useRequiredContext(ActionsContext, "useRadioActions");
+export const useRadioProgress = () => useContext(ProgressContext);
+
+export function useCurrentTrack(): Track {
+  return TRACKS[useRadioState().index];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Provider                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export function RadioProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [progress, setProgress] = useState(0);
+  const [progressOwner, setProgressOwner] = useState(state.index);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  // Snap the read-out back to zero the instant the track changes, rather than
+  // waiting for the next poll to notice. React's documented "adjust state while
+  // rendering" pattern — no effect, no extra commit.
+  if (progressOwner !== state.index) {
+    setProgressOwner(state.index);
+    setProgress(TRACKS[state.index].startAt ?? 0);
+  }
+
+  /* --- player lifecycle -------------------------------------------------- */
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    let disposed = false;
+    let player: YTPlayer | null = null;
+
+    // YT.Player *replaces* the node it is given with an <iframe>, so hand it a
+    // detached div React knows nothing about — otherwise unmount throws.
+    const mount = document.createElement("div");
+    host.appendChild(mount);
+
+    loadYouTubeApi()
+      .then((YT) => {
+        if (disposed) return;
+        player = new YT.Player(mount, {
+          width: YOUTUBE.PLAYER_WIDTH,
+          height: YOUTUBE.PLAYER_HEIGHT,
+          playerVars: { ...YOUTUBE.PLAYER_VARS },
+          events: {
+            onReady: (event) => {
+              playerRef.current = event.target;
+              dispatch({ type: "ready" });
+            },
+            onStateChange: (event) => {
+              if (event.data === PLAYER_STATE.PLAYING) forceLowestQuality(event.target);
+              dispatch({
+                type: "playerState",
+                playerState: event.data,
+                duration: event.target.getDuration(),
+              });
+              if (event.data === PLAYER_STATE.ENDED) dispatch({ type: "step", delta: 1 });
+            },
+            // YouTube silently re-ladders on network changes; pull it back down.
+            onPlaybackQualityChange: (event) => forceLowestQuality(event.target),
+            onError: (event) =>
+              dispatch({
+                type: "error",
+                message: PLAYER_ERROR_MESSAGES[event.data] ?? `Playback error ${event.data}`,
+              }),
+          },
+        });
+        playerRef.current = player;
+      })
+      .catch((cause: Error) => {
+        if (!disposed) dispatch({ type: "error", message: cause.message });
+      });
+
+    return () => {
+      disposed = true;
+      playerRef.current = null;
+      try {
+        player?.destroy();
+      } catch {
+        // destroy() throws if the iframe is already gone — nothing to clean up.
+      }
+      host.replaceChildren();
+    };
+  }, []);
+
+  /* --- track loading ----------------------------------------------------- */
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !state.ready) return;
+
+    const track = TRACKS[state.index];
+    const videoId = parseVideoId(track.source);
+    if (!videoId) {
+      dispatch({ type: "error", message: `“${track.title}” has an unreadable YouTube link` });
+      return;
+    }
+
+    const startSeconds = track.startAt ?? 0;
+    // Before the gate is opened we only *cue*, which fetches metadata without
+    // streaming; `unlocked` flipping true re-runs this and starts playback
+    // inside the user-gesture window.
+    if (state.unlocked) player.loadVideoById({ videoId, startSeconds });
+    else player.cueVideoById({ videoId, startSeconds });
+  }, [state.index, state.ready, state.unlocked]);
+
+  /* --- volume ------------------------------------------------------------ */
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEYS.VOLUME);
+    if (stored !== null) dispatch({ type: "setVolume", volume: Number(stored) });
+    if (window.localStorage.getItem(STORAGE_KEYS.MUTED) === "true") {
+      dispatch({ type: "setMuted", muted: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEYS.VOLUME, String(state.volume));
+    window.localStorage.setItem(STORAGE_KEYS.MUTED, String(state.muted));
+
+    const player = playerRef.current;
+    if (!player || !state.ready) return;
+    player.setVolume(state.volume);
+    if (state.muted) player.mute();
+    else player.unMute();
+  }, [state.volume, state.muted, state.ready]);
+
+  /* --- progress ---------------------------------------------------------- */
+
+  useEffect(() => {
+    if (state.status !== "playing") return;
+    const id = window.setInterval(() => {
+      const player = playerRef.current;
+      if (player) setProgress(player.getCurrentTime());
+    }, PLAYER.PROGRESS_TICK_MS);
+    return () => window.clearInterval(id);
+  }, [state.status]);
+
+  /* --- skip past dead tracks --------------------------------------------- */
+
+  useEffect(() => {
+    // Once every track has failed in a row, stop — the network or an extension
+    // is the problem, and looping the playlist just hammers it.
+    if (!state.error || state.errorStreak >= TRACKS.length) return;
+    const id = window.setTimeout(
+      () => dispatch({ type: "step", delta: 1 }),
+      PLAYER.ERROR_SKIP_DELAY_MS,
+    );
+    return () => window.clearTimeout(id);
+  }, [state.error, state.errorStreak, state.index]);
+
+  /* --- actions ----------------------------------------------------------- */
+
+  // Lets `toggleMute` read the latest state without becoming a dependency,
+  // which keeps the whole `actions` bag referentially stable for the app's life.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const seekTo = useCallback((seconds: number) => {
+    const player = playerRef.current;
+    if (!player) return;
+    const target = Math.max(0, seconds);
+    player.seekTo(target, true);
+    setProgress(target);
+  }, []);
+
+  const actions = useMemo<RadioActions>(
+    () => ({
+      unlock: () => dispatch({ type: "unlock" }),
+
+      toggle: () => {
+        const player = playerRef.current;
+        if (!player) return;
+        const playerState = player.getPlayerState();
+        // Still cued means the gate was never opened; unlocking loads and plays.
+        if (playerState === PLAYER_STATE.CUED || playerState === PLAYER_STATE.UNSTARTED) {
+          dispatch({ type: "unlock" });
+        } else if (
+          playerState === PLAYER_STATE.PLAYING ||
+          playerState === PLAYER_STATE.BUFFERING
+        ) {
+          player.pauseVideo();
+        } else {
+          player.playVideo();
+        }
+      },
+
+      next: () => dispatch({ type: "step", delta: 1 }),
+
+      previous: () => {
+        const player = playerRef.current;
+        // Same as an FM deck: a late ⏮ restarts the track, an early one goes back.
+        if (player && player.getCurrentTime() > PLAYER.RESTART_THRESHOLD_SECONDS) seekTo(0);
+        else dispatch({ type: "step", delta: -1 });
+      },
+
+      seekBy: (seconds: number) => {
+        const player = playerRef.current;
+        if (player) seekTo(player.getCurrentTime() + seconds);
+      },
+
+      seekTo,
+
+      setVolume: (volume: number) => dispatch({ type: "setVolume", volume }),
+
+      nudgeVolume: (delta: number) => dispatch({ type: "nudgeVolume", delta }),
+
+      toggleMute: () => dispatch({ type: "setMuted", muted: !stateRef.current.muted }),
+    }),
+    [seekTo],
+  );
+
+  return (
+    <ActionsContext.Provider value={actions}>
+      <StateContext.Provider value={state}>
+        <ProgressContext.Provider value={progress}>
+          {children}
+          {/* The real audio source: a player kept small enough that YouTube
+              never bothers streaming a large rendition. */}
+          <div
+            ref={hostRef}
+            aria-hidden
+            className="yt-host"
+            style={{ width: YOUTUBE.PLAYER_WIDTH, height: YOUTUBE.PLAYER_HEIGHT }}
+          />
+        </ProgressContext.Provider>
+      </StateContext.Provider>
+    </ActionsContext.Provider>
+  );
+}
