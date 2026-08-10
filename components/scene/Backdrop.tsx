@@ -7,6 +7,8 @@ import { useTimeOfDay } from "@/hooks/useTimeOfDay";
 import { SCENE } from "@/lib/constants";
 import { getPhase } from "@/lib/phase";
 import type { PhaseId } from "@/lib/types";
+import { Highway } from "@/components/scene/Highway";
+import { TruckRear } from "@/components/scene/TruckRear";
 
 interface SceneVideoProps {
   phaseId: PhaseId;
@@ -89,13 +91,8 @@ export function Backdrop() {
         <div className="sky" />
         <div className="celestial" />
         <div className="stars" />
-        <div className="ridge ridge--far" />
-        <div className="ridge ridge--near" />
-        <div className="road">
-          <div className="road-lane" />
-        </div>
-        <div className="beams" />
-        <div className="dust" />
+        <Highway phase={phase} />
+        <TruckRear />
       </div>
 
       {playable.map((phaseId) => (

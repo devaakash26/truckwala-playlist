@@ -40,13 +40,22 @@ export interface RadioState {
   readonly muted: boolean;
   readonly ready: boolean;
   readonly unlocked: boolean;
+  /**
+   * Playing, but held silent. Playback has to *start* inside the click that
+   * opened the gate or Safari refuses it later, so during the intro film the
+   * track really is running — muted — until the driver reaches for the stereo.
+   */
+  readonly silenced: boolean;
   readonly error: string | null;
   /** Consecutive un-playable tracks. Stops auto-skip from looping the playlist. */
   readonly errorStreak: number;
 }
 
 export interface RadioActions {
-  readonly unlock: () => void;
+  /** `silent` starts playback muted, to be handed over by `release`. */
+  readonly unlock: (silent?: boolean) => void;
+  /** Un-mutes and restarts the track from the top. Idempotent. */
+  readonly release: () => void;
   readonly toggle: () => void;
   readonly next: () => void;
   readonly previous: () => void;

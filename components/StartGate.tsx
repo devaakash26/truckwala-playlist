@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { STATION, TRACKS, UI } from "@/lib/constants";
-import { useRadioActions, useRadioState } from "@/components/radio/RadioProvider";
+import { useIntro } from "@/components/intro/IntroProvider";
+import { useRadioState } from "@/components/radio/RadioProvider";
 import { HornIcon } from "@/components/radio/icons";
 
 const SHORTCUTS = [
@@ -20,7 +21,7 @@ const SHORTCUTS = [
  */
 export function StartGate() {
   const { unlocked, ready, error } = useRadioState();
-  const actions = useRadioActions();
+  const intro = useIntro();
   const [mounted, setMounted] = useState(true);
 
   useEffect(() => {
@@ -49,12 +50,14 @@ export function StartGate() {
         <button
           type="button"
           className="gate__button"
-          onClick={actions.unlock}
+          onClick={intro.start}
           disabled={!ready}
           autoFocus
         >
           <HornIcon />
-          {ready ? "Horn bajao" : "Tuning in…"}
+          {/* A hard failure before the player ever came up is almost always an
+              ad blocker eating the YouTube frame — say so instead of spinning. */}
+          {ready ? "Horn bajao" : error ? "Signal nahi mila" : "Tuning in…"}
         </button>
 
         <p className="gate__meta tabular">

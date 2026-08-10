@@ -46,13 +46,15 @@ const INITIAL_STATE: RadioState = {
   muted: false,
   ready: false,
   unlocked: false,
+  silenced: false,
   error: null,
   errorStreak: 0,
 };
 
 type Action =
   | { type: "ready" }
-  | { type: "unlock" }
+  | { type: "unlock"; silent: boolean }
+  | { type: "release" }
   | { type: "step"; delta: number }
   | { type: "playerState"; playerState: number; duration: number }
   | { type: "error"; message: string }
@@ -66,7 +68,12 @@ function reducer(state: RadioState, action: Action): RadioState {
       return state.ready ? state : { ...state, ready: true, status: "cued" };
 
     case "unlock":
-      return state.unlocked ? state : { ...state, unlocked: true, status: "buffering" };
+      return state.unlocked
+        ? state
+        : { ...state, unlocked: true, silenced: action.silent, status: "buffering" };
+
+    case "release":
+      return state.silenced ? { ...state, silenced: false } : state;
 
     case "step": {
       const index = (state.index + action.delta + TRACKS.length) % TRACKS.length;
@@ -251,9 +258,9 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     const player = playerRef.current;
     if (!player || !state.ready) return;
     player.setVolume(state.volume);
-    if (state.muted) player.mute();
+    if (state.muted || state.silenced) player.mute();
     else player.unMute();
-  }, [state.volume, state.muted, state.ready]);
+  }, [state.volume, state.muted, state.silenced, state.ready]);
 
   /* --- progress ---------------------------------------------------------- */
 
@@ -298,7 +305,20 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<RadioActions>(
     () => ({
-      unlock: () => dispatch({ type: "unlock" }),
+      unlock: (silent = false) => dispatch({ type: "unlock", silent }),
+
+      release: () => {
+        if (!stateRef.current.silenced) return;
+        dispatch({ type: "release" });
+        const player = playerRef.current;
+        if (!player) return;
+        // The track has been running under the film; rewind so the listener
+        // actually hears it from the top.
+        const start = TRACKS[stateRef.current.index].startAt ?? 0;
+        player.seekTo(start, true);
+        setProgress(start);
+        if (player.getPlayerState() !== PLAYER_STATE.PLAYING) player.playVideo();
+      },
 
       toggle: () => {
         const player = playerRef.current;
@@ -306,7 +326,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         const playerState = player.getPlayerState();
         // Still cued means the gate was never opened; unlocking loads and plays.
         if (playerState === PLAYER_STATE.CUED || playerState === PLAYER_STATE.UNSTARTED) {
-          dispatch({ type: "unlock" });
+          dispatch({ type: "unlock", silent: false });
         } else if (
           playerState === PLAYER_STATE.PLAYING ||
           playerState === PLAYER_STATE.BUFFERING

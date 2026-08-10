@@ -1,26 +1,897 @@
 @import "tailwindcss";
 
+/* -------------------------------------------------------------------------- */
+/* Animatable palette                                                          */
+/* Registering the phase tokens lets the browser interpolate them, so 20:00     */
+/* arriving turns the whole site from dusk to night over a couple of seconds    */
+/* instead of snapping. Browsers without @property just snap — no fallback      */
+/* code needed.                                                                 */
+/* -------------------------------------------------------------------------- */
+
+@property --sky-1 { syntax: "<color>"; inherits: true; initial-value: #03050c; }
+@property --sky-2 { syntax: "<color>"; inherits: true; initial-value: #0a1226; }
+@property --sky-3 { syntax: "<color>"; inherits: true; initial-value: #13224a; }
+@property --sky-4 { syntax: "<color>"; inherits: true; initial-value: #1d3162; }
+@property --sun-color { syntax: "<color>"; inherits: true; initial-value: #e8eeff; }
+@property --sun-x { syntax: "<percentage>"; inherits: true; initial-value: 76%; }
+@property --sun-y { syntax: "<percentage>"; inherits: true; initial-value: 22%; }
+@property --sun-size { syntax: "<length>"; inherits: true; initial-value: 10vmin; }
+@property --sun-opacity { syntax: "<number>"; inherits: true; initial-value: 0.9; }
+@property --stars { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #ffc247; }
+/* Ground colours are not here on purpose — the canvas owns those, and eases
+   them itself in lib/palette.ts. These four only light the truck. */
+@property --truck-light { syntax: "<number>"; inherits: true; initial-value: 0.3; }
+@property --truck-sat { syntax: "<number>"; inherits: true; initial-value: 0.7; }
+@property --truck-shadow { syntax: "<number>"; inherits: true; initial-value: 0.5; }
+@property --lamp-on { syntax: "<number>"; inherits: true; initial-value: 1; }
+@property --glow { syntax: "<color>"; inherits: true; initial-value: #ffc247; }
+@property --scrim { syntax: "<color>"; inherits: true; initial-value: #020307; }
+@property --vignette { syntax: "<color>"; inherits: true; initial-value: #000004; }
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #f7f1e6;
+  --ink-dim: color-mix(in srgb, var(--ink) 58%, transparent);
+  --panel: color-mix(in srgb, #0b0910 54%, transparent);
+  --panel-line: color-mix(in srgb, var(--ink) 16%, transparent);
+  --radius: 20px;
+  --phase-morph: 2.4s;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html {
+  transition:
+    --sky-1 var(--phase-morph) ease,
+    --sky-2 var(--phase-morph) ease,
+    --sky-3 var(--phase-morph) ease,
+    --sky-4 var(--phase-morph) ease,
+    --sun-color var(--phase-morph) ease,
+    --sun-x var(--phase-morph) ease,
+    --sun-y var(--phase-morph) ease,
+    --sun-size var(--phase-morph) ease,
+    --sun-opacity var(--phase-morph) ease,
+    --stars var(--phase-morph) ease,
+    --truck-light var(--phase-morph) ease,
+    --truck-sat var(--phase-morph) ease,
+    --truck-shadow var(--phase-morph) ease,
+    --lamp-on var(--phase-morph) ease,
+    --accent var(--phase-morph) ease,
+    --glow var(--phase-morph) ease,
+    --scrim var(--phase-morph) ease,
+    --vignette var(--phase-morph) ease;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-phase="dawn"] {
+  --sky-1: #15213c;
+  --sky-2: #5b4a7d;
+  --sky-3: #d97a63;
+  --sky-4: #f7cd95;
+  --sun-color: #ffd9a4;
+  --sun-x: 74%;
+  --sun-y: 64%;
+  --sun-size: 26vmin;
+  --sun-opacity: 0.85;
+  --stars: 0.2;
+  --truck-light: 0.72;
+  --truck-sat: 0.95;
+  --truck-shadow: 0.4;
+  --lamp-on: 0.65;
+  --accent: #ffb46b;
+  --glow: color-mix(in srgb, #ffb46b 45%, transparent);
+  --scrim: #06060a;
+  --vignette: #050409;
 }
+
+[data-phase="day"] {
+  --sky-1: #2b7fd4;
+  --sky-2: #63aee6;
+  --sky-3: #b7dbf2;
+  --sky-4: #e9f2f8;
+  --sun-color: #fffbe8;
+  --sun-x: 66%;
+  --sun-y: 16%;
+  --sun-size: 15vmin;
+  --sun-opacity: 0.95;
+  --stars: 0;
+  --truck-light: 1;
+  --truck-sat: 1.05;
+  --truck-shadow: 0.55;
+  --lamp-on: 0.16;
+  --accent: #ffcf5c;
+  --glow: color-mix(in srgb, #ffcf5c 40%, transparent);
+  --scrim: #080a0e;
+  --vignette: #0a1018;
+}
+
+[data-phase="dusk"] {
+  --sky-1: #241243;
+  --sky-2: #75285c;
+  --sky-3: #d64f2e;
+  --sky-4: #ffad55;
+  --sun-color: #ff9a4d;
+  --sun-x: 22%;
+  --sun-y: 70%;
+  --sun-size: 30vmin;
+  --sun-opacity: 0.95;
+  --stars: 0.3;
+  --truck-light: 0.62;
+  --truck-sat: 1.1;
+  --truck-shadow: 0.42;
+  --lamp-on: 0.82;
+  --accent: #ff8a3d;
+  --glow: color-mix(in srgb, #ff8a3d 50%, transparent);
+  --scrim: #08040a;
+  --vignette: #06020a;
+}
+
+[data-phase="night"] {
+  --sky-1: #03050c;
+  --sky-2: #0a1226;
+  --sky-3: #13224a;
+  --sky-4: #1d3162;
+  --sun-color: #e8eeff;
+  --sun-x: 76%;
+  --sun-y: 20%;
+  --sun-size: 9vmin;
+  --sun-opacity: 0.9;
+  --stars: 1;
+  --truck-light: 0.3;
+  --truck-sat: 0.72;
+  --truck-shadow: 0.3;
+  --lamp-on: 1;
+  --accent: #ffc247;
+  --glow: color-mix(in srgb, #ffc247 55%, transparent);
+  --scrim: #020307;
+  --vignette: #000004;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Shell                                                                       */
+/* -------------------------------------------------------------------------- */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  background: var(--sky-1);
+  color: var(--ink);
+  font-family: var(--font-tech), ui-monospace, "SF Mono", monospace;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: clamp(14px, 3.5vw, 40px);
+  padding-bottom: max(clamp(14px, 3.5vw, 40px), env(safe-area-inset-bottom));
+}
+
+/* The audio really does live here — offscreen, unstyled, and never interactive. */
+.yt-host {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: -10;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.yt-host iframe {
+  border: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Backdrop                                                                    */
+/* -------------------------------------------------------------------------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.backdrop > *,
+.terrain > * {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Hold the fade until the clip is fully opaque, then stop painting the scene
+   entirely — `visibility: hidden` is what actually parks the animations. */
+.terrain {
+  transition:
+    opacity 0.7s ease calc(var(--crossfade, 2000ms) * 0.75),
+    visibility 0s linear calc(var(--crossfade, 2000ms) * 0.75 + 0.7s);
+}
+.backdrop:has(.scene-video[data-visible="true"]) .terrain {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sky {
+  background: linear-gradient(
+    to bottom,
+    var(--sky-1) 0%,
+    var(--sky-2) 32%,
+    var(--sky-3) 58%,
+    var(--sky-4) 74%,
+    var(--sky-4) 100%
+  );
+}
+
+.celestial {
+  opacity: var(--sun-opacity);
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle var(--sun-size) at var(--sun-x) var(--sun-y),
+    var(--sun-color) 0%,
+    color-mix(in srgb, var(--sun-color) 45%, transparent) 22%,
+    color-mix(in srgb, var(--sun-color) 12%, transparent) 44%,
+    transparent 68%
+  );
+}
+
+.stars {
+  opacity: var(--stars);
+  background-image:
+    radial-gradient(1.6px 1.6px at 12% 14%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 27% 9%, #fff, transparent),
+    radial-gradient(1.8px 1.8px at 41% 20%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 55% 7%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 68% 17%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 82% 11%, #fff, transparent),
+    radial-gradient(1.7px 1.7px at 91% 24%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 7% 30%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 34% 33%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 61% 29%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 76% 36%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 47% 41%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 19% 44%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 88% 45%, #fff, transparent);
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+
+/* Ground, ridges, roadside props, traffic and dust are all painted here by
+   lib/highway.ts. The canvas is transparent above the horizon so the CSS sky
+   shows through it. */
+.highway {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* -------------------------------------------------------------------------- */
+/* The truck ahead                                                             */
+/* -------------------------------------------------------------------------- */
+
+.truck {
+  inset: auto 0 14% 0;
+  display: flex;
+  justify-content: center;
+  /* Two out-of-phase cycles on separate transform properties, so the bob never
+     lands on a visible loop. */
+  animation:
+    truck-bob 1.9s ease-in-out infinite alternate,
+    truck-sway 6.1s ease-in-out infinite alternate;
+}
+.truck__svg {
+  /* Derived from the camera, not chosen by eye — the cap only stops it eating
+     a narrow screen, at which point the truck reads as further ahead. */
+  width: min(var(--truck-width), 78vw);
+  height: auto;
+  overflow: visible;
+  animation: truck-shudder 0.22s steps(2, end) infinite alternate;
+}
+
+.truck__art {
+  filter: brightness(var(--truck-light)) saturate(var(--truck-sat));
+}
+.truck__shadow {
+  fill: #000;
+  opacity: var(--truck-shadow);
+}
+.truck__lamps {
+  opacity: var(--lamp-on);
+}
+.truck__text,
+.truck__plate {
+  font-family: var(--font-display), Georgia, serif;
+}
+.truck__plate {
+  font-family: var(--font-tech), monospace;
+  font-weight: 700;
+}
+.truck__blessing {
+  letter-spacing: 0.02em;
+}
+
+.truck__chain {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: chain-swing 1.5s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -0.37s);
+  animation-duration: calc(1.3s + var(--i) * 0.11s);
+}
+.truck__bulb {
+  animation: bulb-chase 1.7s linear infinite;
+  animation-delay: calc(var(--i) * -0.13s);
+}
+
+.scene-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity var(--crossfade, 2000ms) ease;
+}
+.scene-video[data-visible="true"] {
+  opacity: 1;
+}
+
+/* Grade applied on top of whichever backdrop won, so a clip and the CSS scene
+   end up looking like the same film. */
+.vignette {
+  background: radial-gradient(125% 95% at 50% 42%, transparent 38%, var(--vignette) 100%);
+}
+.scrim {
+  background: linear-gradient(
+    to top,
+    var(--scrim) 0%,
+    color-mix(in srgb, var(--scrim) 55%, transparent) 24%,
+    transparent 54%
+  );
+}
+.grain {
+  opacity: 0.055;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Console                                                                     */
+/* -------------------------------------------------------------------------- */
+
+.console {
+  width: min(940px, 100%);
+  display: grid;
+  gap: clamp(10px, 1.6vw, 16px);
+  padding: clamp(14px, 2.2vw, 22px) clamp(16px, 2.6vw, 26px);
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--ink) 10%, transparent),
+      color-mix(in srgb, var(--ink) 2%, transparent)
+    ),
+    var(--panel);
+  box-shadow:
+    0 26px 70px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 color-mix(in srgb, var(--ink) 22%, transparent);
+  backdrop-filter: blur(20px) saturate(1.25);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25);
+}
+
+.console__head {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.4vw, 14px);
+}
+
+.lamp {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+.lamp[data-live="true"] {
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--glow);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+.brand {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(17px, 2.4vw, 23px);
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.brand em {
+  font-style: normal;
+  color: var(--accent);
+  margin-left: 0.28em;
+}
+
+.freq {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+}
+.freq::after {
+  content: " MHz";
+}
+
+.badge {
+  margin-left: auto;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.meter__rail {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 20px;
+}
+.meter__bar {
+  width: 3px;
+  border-radius: 2px;
+  height: calc(3px + var(--level, 0.06) * 17px);
+  background: linear-gradient(to top, var(--accent), color-mix(in srgb, var(--accent) 35%, #fff));
+  transition: height var(--meter-tick, 90ms) linear;
+}
+
+.ticker {
+  overflow: hidden;
+  padding: clamp(4px, 1vw, 8px) 0;
+  border-block: 1px solid var(--panel-line);
+  mask-image: linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+}
+.ticker__rail {
+  display: flex;
+  width: max-content;
+  animation: ticker var(--ticker-duration, 24s) linear infinite;
+}
+.ticker__rail span {
+  white-space: pre;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(19px, 3.2vw, 32px);
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+.ticker[data-status="error"] .ticker__rail span {
+  color: #ff8f7a;
+}
+
+.seek {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+.seek__time {
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+.console__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(10px, 2vw, 20px);
+}
+
+.deck {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.6vw, 14px);
+}
+.deck-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(38px, 8vw, 46px);
+  height: clamp(38px, 8vw, 46px);
+  border-radius: 50%;
+  color: var(--ink);
+  border: 1px solid var(--panel-line);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  transition: background 0.2s ease, transform 0.14s ease, box-shadow 0.2s ease;
+}
+.deck-btn svg {
+  width: 19px;
+  height: 19px;
+}
+.deck-btn--seek svg {
+  width: 17px;
+  height: 17px;
+  transform: translateY(-2px);
+}
+.deck-btn__step {
+  position: absolute;
+  bottom: 5px;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.deck-btn--primary {
+  width: clamp(52px, 11vw, 62px);
+  height: clamp(52px, 11vw, 62px);
+  color: #171004;
+  background: var(--accent);
+  border-color: color-mix(in srgb, #fff 30%, transparent);
+  box-shadow: 0 12px 32px var(--glow);
+}
+.deck-btn--primary svg {
+  width: 24px;
+  height: 24px;
+}
+.deck-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
+  transform: translateY(-1px);
+}
+.deck-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, #fff);
+}
+.deck-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
+.deck-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.volume {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: clamp(96px, 20vw, 168px);
+}
+.volume__toggle {
+  color: var(--ink-dim);
+  transition: color 0.2s ease;
+}
+.volume__toggle:hover {
+  color: var(--ink);
+}
+.volume__toggle svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Range inputs                                                                */
+/* -------------------------------------------------------------------------- */
+
+input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 20px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"]:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--seek-progress, 0%),
+    color-mix(in srgb, var(--ink) 16%, transparent) var(--seek-progress, 0%)
+  );
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 4px var(--glow);
+}
+input[type="range"]::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+input[type="range"]::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 4px var(--glow);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Start gate                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 38%, rgb(7 9 15 / 0.7), rgb(2 3 7 / 0.95));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.7s ease, visibility 0s linear 0.7s;
+}
+.gate[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.gate__panel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  max-width: 620px;
+}
+.gate__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.gate__wordmark {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(46px, 12vw, 104px);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+}
+.gate__wordmark em {
+  font-style: normal;
+  color: var(--accent);
+  margin-left: 0.16em;
+}
+.gate__blurb {
+  max-width: 44ch;
+  font-size: clamp(12px, 1.6vw, 14px);
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+.gate__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 14px 30px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #171004;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  box-shadow: 0 16px 44px var(--glow);
+  transition: transform 0.16s ease, box-shadow 0.2s ease;
+}
+.gate__button svg {
+  width: 19px;
+  height: 19px;
+}
+.gate__button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 54px var(--glow);
+}
+.gate__button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+.gate__button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.gate__meta {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+.gate__keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+.gate__keys kbd {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 2px 7px;
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  font: inherit;
+  color: var(--ink);
+}
+.gate__error {
+  font-size: 12px;
+  color: #ff8f7a;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Opening film                                                                */
+/* -------------------------------------------------------------------------- */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #000;
+  opacity: 0;
+  visibility: hidden;
+  /* Snaps in over the gate, then dissolves slowly into the live scene. */
+  transition:
+    opacity var(--intro-outro) ease,
+    visibility 0s linear var(--intro-outro);
+}
+.intro[data-open="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--intro-cut) ease;
+}
+
+.intro__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Remounted on every shot, so this replays as the cut between them. */
+  animation: intro-cut var(--intro-cut) ease;
+}
+
+/* Kept in the document purely so the browser fetches and decodes the next
+   shot while this one plays; a cut then costs nothing. */
+.intro__preload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 100% at 50% 45%, transparent 42%, rgb(0 0 0 / 0.55) 100%);
+}
+
+.intro__skip {
+  position: absolute;
+  right: clamp(16px, 4vw, 40px);
+  bottom: max(clamp(16px, 4vw, 40px), env(safe-area-inset-bottom));
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 17px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  background: rgb(0 0 0 / 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--ink-dim);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, color 0.2s ease;
+}
+.intro__skip[data-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+.intro__skip:hover {
+  color: var(--ink);
+}
+.intro__skip kbd {
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  border-radius: 5px;
+  font: inherit;
+  letter-spacing: 0.08em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Motion                                                                      */
+/* -------------------------------------------------------------------------- */
+
+@keyframes ticker {
+  to { transform: translateX(-50%); }
+}
+@keyframes twinkle {
+  from { opacity: calc(var(--stars) * 0.55); }
+  to { opacity: var(--stars); }
+}
+
+/* Three separate transform properties so the browser composes them instead of
+   the animations fighting over `transform`. */
+@keyframes truck-bob {
+  from { translate: 0 0.5%; }
+  to { translate: 0 -0.7%; }
+}
+@keyframes truck-sway {
+  from { rotate: -0.35deg; }
+  to { rotate: 0.35deg; }
+}
+@keyframes truck-shudder {
+  to { translate: 0 -0.2%; }
+}
+@keyframes chain-swing {
+  from { rotate: -8deg; }
+  to { rotate: 8deg; }
+}
+@keyframes bulb-chase {
+  0%, 100% { opacity: 0.35; }
+  18% { opacity: 1; }
+}
+@keyframes intro-cut {
+  from { opacity: 0; }
+}
+@keyframes pulse {
+  50% { opacity: 0.45; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  animation: spin 0.9s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
+  .stars,
+  .truck,
+  .truck__svg,
+  .truck__chain,
+  .truck__bulb,
+  .ticker__rail,
+  .lamp,
+  .spinner {
+    animation: none;
+  }
+  .ticker__rail {
+    /* Without the scroll the second copy is dead weight. */
+    width: 100%;
+    overflow: hidden;
+  }
+  .ticker__rail span + span {
+    display: none;
+  }
 }

@@ -5,6 +5,7 @@ import { useMediaSession } from "@/hooks/useMediaSession";
 import { useTimeOfDay } from "@/hooks/useTimeOfDay";
 import { STATION } from "@/lib/constants";
 import { getPhase } from "@/lib/phase";
+import { useIntro } from "@/components/intro/IntroProvider";
 import { useRadioState } from "@/components/radio/RadioProvider";
 import { SeekBar } from "@/components/radio/SeekBar";
 import { SignalMeter } from "@/components/radio/SignalMeter";
@@ -19,7 +20,10 @@ function PhaseBadge() {
 }
 
 export function RadioConsole() {
-  useKeyboardControls();
+  const intro = useIntro();
+  // The film owns the keyboard while it runs — Space skips it rather than
+  // pausing a track nobody can hear yet.
+  useKeyboardControls(intro.status !== "playing");
   useMediaSession();
   const { status } = useRadioState();
 

@@ -8,7 +8,8 @@ import "./globals.css";
 
 const display = Rozha_One({
   weight: "400",
-  subsets: ["latin"],
+  // Devanagari carries the blessing painted across the truck's tailgate.
+  subsets: ["latin", "devanagari"],
   variable: "--font-display",
   display: "swap",
 });

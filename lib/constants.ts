@@ -168,6 +168,33 @@ export const SCENE = {
   METER_BARS: 14,
 } as const;
 
+/**
+ * The opening film: driver walks up, climbs in, reaches for the stereo, rolls
+ * out. Shots play in order and every file is optional — a missing one ends the
+ * sequence and drops straight into the station, so the site works before a
+ * single frame has been generated.
+ */
+export const INTRO = {
+  SHOTS: [
+    { id: "approach", src: "/scenes/intro-1.mp4", poster: "/scenes/intro-1.jpg" },
+    { id: "cabin", src: "/scenes/intro-2.mp4", poster: "/scenes/intro-2.jpg" },
+    { id: "rollout", src: "/scenes/intro-3.mp4", poster: "/scenes/intro-3.jpg" },
+  ],
+  /** Index of the shot where the driver switches the stereo on. */
+  AUDIO_CUE_SHOT: 1,
+  /** Bring the music up this many seconds before that shot ends. */
+  AUDIO_CUE_LEAD: 1.4,
+  /** Clips are silent by default so nothing fights the song. */
+  MUTED: true,
+  /** Cross-cut between shots, and the dissolve into the live scene. */
+  CUT_MS: 260,
+  OUTRO_MS: 1200,
+  /** Skip appears after this — long enough not to invite an instant skip. */
+  SKIP_AFTER_MS: 1400,
+  /** Per tab, not per visit: a reload goes straight to the radio. */
+  SESSION_KEY: "truckwala:intro-played",
+} as const;
+
 export const UI = {
   /** Keep the gate mounted this long after unlock so it can fade out. */
   GATE_EXIT_MS: 900,

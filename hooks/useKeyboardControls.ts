@@ -28,10 +28,12 @@ function isTyping(target: EventTarget | null): boolean {
  * Deck-style shortcuts. Bound once at the app root; `actions` is referentially
  * stable, so this listener is attached exactly once for the session.
  */
-export function useKeyboardControls(): void {
+export function useKeyboardControls(enabled = true): void {
   const actions = useRadioActions();
 
   useEffect(() => {
+    if (!enabled) return;
+
     const onKeyDown = (event: KeyboardEvent) => {
       // Leave browser and OS shortcuts alone.
       if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
@@ -45,5 +47,5 @@ export function useKeyboardControls(): void {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [actions]);
+  }, [actions, enabled]);
 }
