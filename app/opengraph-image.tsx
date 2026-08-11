@@ -44,7 +44,7 @@ export default function OpengraphImage() {
           background: "linear-gradient(160deg, #05070f 0%, #101a35 55%, #23335f 100%)",
           color: "#f7f1e6",
           fontFamily: "sans-serif",
-઼        }}
+        }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 12, height: 12, borderRadius: 6, background: "#ffc247" }} />
