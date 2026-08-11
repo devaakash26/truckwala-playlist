@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Truckwala FM">
+  <!-- Deliberately a bold two-colour silhouette: a favicon is read at 16px,
+       where the truck's paintwork and lettering would turn to mush. A side
+       profile is the shape that still says "truck" at that size. -->
+  <rect width="32" height="32" rx="7" fill="#14101b" />
+  <g fill="#ffc247">
+    <path d="M4.6 11.4A1.6 1.6 0 0 1 6.2 9.8h9.6a1.6 1.6 0 0 1 1.6 1.6v9.3H4.6z" />
+    <path d="M17.4 13.4h4.1a1.6 1.6 0 0 1 1.22.57l3.1 3.66a1.6 1.6 0 0 1 .38 1.03v2.04h-8.8z" />
+    <rect x="3.4" y="20.7" width="24.4" height="1.7" rx="0.85" />
+  </g>
+  <g fill="#14101b">
+    <circle cx="9.6" cy="22.4" r="3.1" />
+    <circle cx="22.6" cy="22.4" r="3.1" />
+  </g>
+  <g fill="#ffc247">
+    <circle cx="9.6" cy="22.4" r="1.15" />
+    <circle cx="22.6" cy="22.4" r="1.15" />
+  </g>
+</svg>
