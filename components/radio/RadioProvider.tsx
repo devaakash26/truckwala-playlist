@@ -186,18 +186,14 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const [progressOwner, setProgressOwner] = useState(state.index);
   const playerRef = useRef<YTPlayer | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
-  /** Seconds to drop into on the first load only, from the saved bookmark. */
   const pendingResume = useRef(0);
+  const startedFrom = useRef(0);
 
-  // Snap the read-out back to zero the instant the track changes, rather than
-  // waiting for the next poll to notice. React's documented "adjust state while
-  // rendering" pattern — no effect, no extra commit.
   if (progressOwner !== state.index) {
     setProgressOwner(state.index);
     setProgress(TRACKS[state.index].startAt ?? 0);
   }
 
-  /* --- player lifecycle -------------------------------------------------- */
 
   useEffect(() => {
     const host = hostRef.current;
@@ -311,6 +307,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     // starts where the track itself says to.
     const startSeconds = pendingResume.current || track.startAt || 0;
     pendingResume.current = 0;
+    startedFrom.current = startSeconds;
     // Same reason as in onReady: the mute has to land before the load.
     if (state.silenced) player.mute();
     // Before the gate is opened we only *cue*, which fetches metadata without
@@ -354,6 +351,11 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
     const trackId = TRACKS[state.index].id;
     const bookmark = () => {
+      // Only remember what was actually heard. Time that rolls by while the
+      // browser is holding the sound back was never listened to, and saving it
+      // would mean coming back to find the station had skipped ahead without
+      // you.
+      if (state.silenced) return;
       const player = playerRef.current;
       if (player) writeResume({ id: trackId, seconds: player.getCurrentTime() });
     };
@@ -381,7 +383,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pagehide", bookmark);
       bookmark();
     };
-  }, [state.status, state.index]);
+  }, [state.status, state.index, state.silenced]);
 
   /* --- skip past dead tracks --------------------------------------------- */
 
@@ -451,8 +453,11 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
         wokeAt.current = performance.now();
         if (!stateRef.current.muted) player.unMute();
-        // It has only been running silently; rewind so it is heard from the top.
-        const start = TRACKS[stateRef.current.index].startAt ?? 0;
+        // Back to where this playthrough began — not to the top of the track.
+        // On a fresh start those are the same thing, but when the session was
+        // resumed from a bookmark they are not, and rewinding to zero threw
+        // away exactly the spot the listener came back for.
+        const start = startedFrom.current;
         player.seekTo(start, true);
         setProgress(start);
         if (player.getPlayerState() !== PLAYER_STATE.PLAYING)
