@@ -48,8 +48,10 @@ export default function OpengraphImage() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 12, height: 12, borderRadius: 6, background: "#ffc247" }} />
+          {/* One text node per div: Satori treats each interpolation as a
+              separate child and then demands an explicit display on the parent. */}
           <div style={{ fontSize: 26, letterSpacing: 6, color: "#b9c3d8" }}>
-            {STATION.FREQUENCY} MHz · {STATION.TAGLINE.toUpperCase()}
+            {`${STATION.FREQUENCY} MHz · ${STATION.TAGLINE.toUpperCase()}`}
           </div>
         </div>
 
@@ -58,8 +60,7 @@ export default function OpengraphImage() {
             {STATION_NAME}
           </div>
           <div style={{ fontSize: 34, color: "#c8d0e2", maxWidth: 820, lineHeight: 1.35 }}>
-            Old Hindi truck driver songs, non-stop — Kishore Kumar, Kumar Sanu, Alka Yagnik,
-            Udit Narayan.
+            {"Old Hindi truck driver songs, non-stop — Kishore Kumar, Kumar Sanu, Alka Yagnik, Udit Narayan."}
           </div>
         </div>
 
