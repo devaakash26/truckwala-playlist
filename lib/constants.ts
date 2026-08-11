@@ -219,6 +219,11 @@ export const HORN = {
   CUT_SECONDS: 0.06,
 } as const;
 
+export const UI = {
+  /** How long the nudge lingers after the sound comes on, so it can fade. */
+  HINT_EXIT_MS: 700,
+} as const;
+
 export const STORAGE_KEYS = {
   VOLUME: "truckwala:volume",
   MUTED: "truckwala:muted",

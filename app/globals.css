@@ -910,6 +910,57 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Audio nudge                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Anchored to the deck, which is the nearest positioned ancestor — so `100%`
+   here is the deck's own height and this lands just above it. */
+.hint {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #0b0910 74%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  /* Delayed in, immediate out: the autoplay verdict lands inside a second, so
+     when sound is granted this never becomes visible at all. */
+  transition: opacity 0.5s ease 1.2s;
+}
+.hint[data-open="true"] {
+  opacity: 1;
+  animation: hint-breathe 2.6s ease-in-out infinite 1.7s;
+}
+.hint__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--glow);
+}
+
+@media (max-width: 560px) {
+  .hint {
+    font-size: 10px;
+    padding: 7px 14px;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /* Opening film                                                                */
 /* -------------------------------------------------------------------------- */
 
@@ -1031,6 +1082,9 @@ input[type="range"]::-moz-range-thumb {
 }
 @keyframes intro-cut {
   from { opacity: 0; }
+}
+@keyframes hint-breathe {
+  50% { opacity: 0.55; }
 }
 @keyframes paint-in {
   from { opacity: 0; translate: 0 3%; }

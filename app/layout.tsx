@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Rozha_One, Space_Mono } from "next/font/google";
 
@@ -38,12 +39,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // The boot script rewrites data-phase before paint, so the server value is
-    // only ever a placeholder — hence suppressHydrationWarning.
     <html lang="en" data-phase={DEFAULT_PHASE_ID} suppressHydrationWarning>
       <body className={`${display.variable} ${tech.variable}`}>
         <script dangerouslySetInnerHTML={{ __html: PHASE_BOOT_SCRIPT }} />
         {children}
+        <Analytics />
       </body>
     </html>
   );
