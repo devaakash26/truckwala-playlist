@@ -526,13 +526,8 @@ export const LIVE = {
   CLOCK_TICK_MS: 1000,
 } as const;
 
-/**
- * The opening film: driver walks up, climbs in, reaches for the stereo, rolls
- * out. Shots play in order and every file is optional — a missing one ends the
- * sequence and drops straight into the station, so the site works before a
- * single frame has been generated.
- */
 export const INTRO = {
+  ENABLED: false,
   SHOTS: [
     {
       id: "approach",

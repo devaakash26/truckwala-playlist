@@ -67,7 +67,7 @@ type Action =
   | { type: "unlock"; silent: boolean }
   | { type: "restore"; index: number }
   | { type: "silence" }
-  | { type: "release" }
+  | { type: "audible" }
   | { type: "step"; delta: number }
   | { type: "playerState"; playerState: number; duration: number }
   | { type: "error"; message: string }
@@ -96,7 +96,7 @@ function reducer(state: RadioState, action: Action): RadioState {
     case "silence":
       return state.silenced ? state : { ...state, silenced: true };
 
-    case "release":
+    case "audible":
       return state.released ? state : { ...state, silenced: false, released: true };
 
     case "step": {
@@ -238,8 +238,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
               dispatch({ type: "unlock", silent: true });
             },
             onStateChange: (event) => {
-              if (event.data === PLAYER_STATE.PLAYING)
+              if (event.data === PLAYER_STATE.PLAYING) {
                 forceLowestQuality(event.target);
+                if (!event.target.isMuted()) dispatch({ type: "audible" });
+              }
               dispatch({
                 type: "playerState",
                 playerState: event.data,
@@ -411,7 +413,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   // the horn can never restart something the listener just stopped.
   const duckTimer = useRef(0);
   const ducking = useRef(false);
-  const released = useRef(false);
   /** The out-loud attempt is made once per load, not once per state change. */
   const asked = useRef(false);
   /** When we actually un-muted, so the same press is not read as a command. */
@@ -436,19 +437,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       unlock: (silent = false) => dispatch({ type: "unlock", silent }),
 
       release: () => {
-        // Guarded by a ref rather than by state: this runs inside a raw DOM
-        // event, and state has not necessarily caught up yet. A ref is set the
-        // instant it is read, so the timed cue and a click can race safely.
-        if (released.current) return;
-        released.current = true;
-        dispatch({ type: "release" });
-
         const player = playerRef.current;
         if (!player) return;
 
-        // Read before un-muting. If any of it has already been audible — the
-        // browser allowed the out-loud start — this is just a stray click, and
-        // it must not yank the track back to the beginning.
+        if (stateRef.current.released) return;
         if (!stateRef.current.silenced && !player.isMuted()) return;
 
         wokeAt.current = performance.now();
@@ -587,13 +579,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           player.getPlayerState() === PLAYER_STATE.BUFFERING;
         // Still running and still un-muted means it was granted.
         if (running && !player.isMuted()) {
-          released.current = true;
-          dispatch({ type: "release" });
+          dispatch({ type: "audible" });
           return;
         }
 
-        // Refused. Back to the silent start, which is never refused, and the
-        // wake listener below hands the sound over on the first touch.
         player.mute();
         player.playVideo();
       },

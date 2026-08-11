@@ -10,6 +10,7 @@ import { INTRO } from "@/lib/constants";
 export function introWillPlay(): boolean {
   if (typeof window === "undefined") return false;
   return (
+    INTRO.ENABLED &&
     INTRO.SHOTS.length > 0 &&
     window.sessionStorage.getItem(INTRO.SESSION_KEY) === null &&
     // A three-shot film is exactly what someone asking for less motion does not
