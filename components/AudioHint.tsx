@@ -13,17 +13,17 @@ import { useRadioState } from "@/components/radio/RadioProvider";
  * and the next thing the visitor touches turns it up.
  */
 export function AudioHint() {
-  const { silenced, ready } = useRadioState();
+  const { silenced, released, ready } = useRadioState();
   const intro = useIntro();
   const [mounted, setMounted] = useState(true);
 
-  const showing = ready && silenced && intro.status !== "playing";
+  const showing = ready && silenced && !released && intro.status !== "playing";
 
   useEffect(() => {
-    if (silenced) return;
+    if (!released) return;
     const id = window.setTimeout(() => setMounted(false), UI.HINT_EXIT_MS);
     return () => window.clearTimeout(id);
-  }, [silenced]);
+  }, [released]);
 
   if (!mounted) return null;
 

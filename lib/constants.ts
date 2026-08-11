@@ -148,6 +148,14 @@ export const LIVE = {
   /** Keeps proxies from culling an idle stream. */
   HEARTBEAT_MS: 25_000,
   RECONNECT_MS: 4000,
+  /**
+   * A serverless host cuts a long-lived stream off at its function timeout, so
+   * a fixed retry becomes a permanent reconnect loop. Back off, then give up
+   * and show nothing rather than hammering the endpoint forever.
+   */
+  RECONNECT_BACKOFF: 1.8,
+  RECONNECT_MAX_MS: 60_000,
+  RECONNECT_ATTEMPTS: 6,
   TIMEZONE: "Asia/Kolkata",
   CLOCK_TICK_MS: 1000,
 } as const;

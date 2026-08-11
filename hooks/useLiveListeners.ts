@@ -16,6 +16,7 @@ export function useLiveListeners(): number | null {
   useEffect(() => {
     let source: EventSource | null = null;
     let retry = 0;
+    let attempts = 0;
     let closed = false;
 
     const connect = () => {
@@ -25,7 +26,10 @@ export function useLiveListeners(): number | null {
       source.onmessage = (event) => {
         try {
           const listeners = Number(JSON.parse(event.data).listeners);
-          if (Number.isFinite(listeners)) setCount(listeners);
+          if (!Number.isFinite(listeners)) return;
+          // A frame got through, so whatever went wrong before is behind us.
+          attempts = 0;
+          setCount(listeners);
         } catch {
           // A malformed frame is not worth tearing the stream down for.
         }
@@ -34,7 +38,13 @@ export function useLiveListeners(): number | null {
       source.onerror = () => {
         source?.close();
         setCount(null);
-        retry = window.setTimeout(connect, LIVE.RECONNECT_MS);
+        if (attempts >= LIVE.RECONNECT_ATTEMPTS) return;
+        const wait = Math.min(
+          LIVE.RECONNECT_MS * LIVE.RECONNECT_BACKOFF ** attempts,
+          LIVE.RECONNECT_MAX_MS,
+        );
+        attempts += 1;
+        retry = window.setTimeout(connect, wait);
       };
     };
 

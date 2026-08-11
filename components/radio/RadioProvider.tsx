@@ -56,6 +56,7 @@ const INITIAL_STATE: RadioState = {
   ready: false,
   unlocked: false,
   silenced: false,
+  released: false,
   error: null,
   errorStreak: 0,
 };
@@ -91,7 +92,7 @@ function reducer(state: RadioState, action: Action): RadioState {
       return state.silenced ? state : { ...state, silenced: true };
 
     case "release":
-      return state.silenced ? { ...state, silenced: false } : state;
+      return state.released ? state : { ...state, silenced: false, released: true };
 
     case "step": {
       const index =
@@ -358,8 +359,9 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   // the horn can never restart something the listener just stopped.
   const duckTimer = useRef(0);
   const ducking = useRef(false);
-  /** When the sound was turned on, or 0 while it is still silent. */
-  const releasedAt = useRef(0);
+  const released = useRef(false);
+  /** When we actually un-muted, so the same press is not read as a command. */
+  const wokeAt = useRef(0);
   const cancelDuck = useCallback(() => {
     window.clearTimeout(duckTimer.current);
     ducking.current = false;
@@ -383,16 +385,21 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         // Guarded by a ref rather than by state: this runs inside a raw DOM
         // event, and state has not necessarily caught up yet. A ref is set the
         // instant it is read, so the timed cue and a click can race safely.
-        if (releasedAt.current !== 0) return;
-        releasedAt.current = performance.now();
-
+        if (released.current) return;
+        released.current = true;
         dispatch({ type: "release" });
+
         const player = playerRef.current;
         if (!player) return;
 
+        // Read before un-muting. If any of it has already been audible — the
+        // browser allowed the out-loud start — this is just a stray click, and
+        // it must not yank the track back to the beginning.
+        if (!stateRef.current.silenced && !player.isMuted()) return;
+
+        wokeAt.current = performance.now();
         if (!stateRef.current.muted) player.unMute();
-        // It has been running silently under the film; rewind so the listener
-        // actually hears it from the top.
+        // It has only been running silently; rewind so it is heard from the top.
         const start = TRACKS[stateRef.current.index].startAt ?? 0;
         player.seekTo(start, true);
         setProgress(start);
@@ -424,7 +431,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         // Pressing play is also the gesture that woke the audio, and the
         // pointerdown that did so fires first. Without this the very same press
         // would un-mute the station and then immediately pause it again.
-        if (performance.now() - releasedAt.current < PLAYER.WAKE_GRACE_MS)
+        if (performance.now() - wokeAt.current < PLAYER.WAKE_GRACE_MS)
           return;
         const playerState = player.getPlayerState();
         // Still cued means the gate was never opened; unlocking loads and plays.
@@ -488,7 +495,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
    * embed will sometimes mute itself and carry on rather than stopping.
    */
   useEffect(() => {
-    if (!state.ready || !state.unlocked || state.silenced) return;
+    if (!state.ready || !state.unlocked || state.silenced || state.released) return;
 
     const id = window.setTimeout(() => {
       const player = playerRef.current;
@@ -507,7 +514,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     }, PLAYER.AUTOPLAY_PROBE_MS);
 
     return () => window.clearTimeout(id);
-  }, [state.ready, state.unlocked, state.silenced]);
+  }, [state.ready, state.unlocked, state.silenced, state.released]);
 
   // Bound only while the station is still silent, and torn down by that flag
   // flipping rather than by the handler deciding it is finished. An earlier
@@ -516,7 +523,14 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   // the listener went away, the mute was then re-applied, and the station
   // stayed silent with nothing left to wake it.
   useEffect(() => {
-    if (!state.silenced) return;
+    // Bound from the moment there is something to play until the sound has
+    // actually been handed over — NOT merely while `silenced`. Between asking
+    // to play out loud and finding out whether that was refused, the audio is
+    // in neither state, and that gap is exactly when a visitor clicks. Waiting
+    // for `silenced` meant the very first press was swallowed and they had to
+    // click a second time, which on a brand-new domain — where the browser has
+    // no history with the site and always refuses — read as "no sound at all".
+    if (!state.unlocked || state.released) return;
 
     const wake = () => {
       if (playerRef.current) actions.release();
@@ -528,7 +542,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     return () => {
       for (const type of WAKE_EVENTS) window.removeEventListener(type, wake);
     };
-  }, [state.silenced, actions]);
+  }, [state.unlocked, state.released, actions]);
 
   return (
     <ActionsContext.Provider value={actions}>

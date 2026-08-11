@@ -47,6 +47,7 @@ export interface RadioState {
    * track really is running — muted — until the driver reaches for the stereo.
    */
   readonly silenced: boolean;
+  readonly released: boolean;
   readonly error: string | null;
   /** Consecutive un-playable tracks. Stops auto-skip from looping the playlist. */
   readonly errorStreak: number;
