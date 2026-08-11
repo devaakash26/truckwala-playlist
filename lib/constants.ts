@@ -107,7 +107,13 @@ export const PLAYER = {
    * back to a silent start. Long enough for a slow connection to at least reach
    * buffering, short enough that nobody sits in silence wondering.
    */
-  AUTOPLAY_PROBE_MS: 1400,
+  /** Let the guaranteed muted start actually begin before asking for sound. */
+  AUTOPLAY_ASK_MS: 350,
+  AUTOPLAY_PROBE_MS: 600,
+  /** How often the current spot is written down, so a reload lands back on it. */
+  RESUME_SAVE_MS: 4000,
+  /** Below this, just start the track over — resuming two seconds in is noise. */
+  RESUME_MIN_SECONDS: 4,
 } as const;
 
 export const YOUTUBE = {
@@ -209,16 +215,14 @@ export const HORN = {
   COOLDOWN_MS: 340,
   /** Beat of silence after the blast before the music comes back. */
   RESUME_GAP_SECONDS: 0.14,
-} as const;
-
-export const UI = {
-  /** How long the "click anywhere" nudge lingers after the sound comes on. */
-  HINT_EXIT_MS: 700,
+  /** Ramp used when the horn is let go early — a hard stop clicks. */
+  CUT_SECONDS: 0.06,
 } as const;
 
 export const STORAGE_KEYS = {
   VOLUME: "truckwala:volume",
   MUTED: "truckwala:muted",
+  RESUME: "truckwala:resume",
 } as const;
 
 /** Keyboard map. Values are intents resolved in useKeyboardControls. */

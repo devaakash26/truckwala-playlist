@@ -3,7 +3,6 @@
 import { useKeyboardControls } from "@/hooks/useKeyboardControls";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { STATION } from "@/lib/constants";
-import { AudioHint } from "@/components/AudioHint";
 import { useIntro } from "@/components/intro/IntroProvider";
 import { Disc } from "@/components/radio/Disc";
 import { HornButton } from "@/components/radio/HornButton";
@@ -25,10 +24,6 @@ export function RadioConsole() {
 
   return (
     <section className="deck" aria-label={`${STATION.NAME} ${STATION.SUFFIX} player`}>
-      {/* Sits inside the deck so it can be positioned against it. Anchored to
-          the stage it resolved to 100% of the stage's height and floated off
-          the top of the page, which is why nobody ever saw it. */}
-      <AudioHint />
       <Disc />
 
       <div className="deck__body">

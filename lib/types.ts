@@ -3,9 +3,7 @@ export type PhaseId = "dawn" | "day" | "dusk" | "night";
 
 export interface Phase {
   readonly id: PhaseId;
-  /** Shown in the console badge. */
   readonly label: string;
-  /** Local-time hour this phase takes over at, inclusive. */
   readonly startHour: number;
   readonly clip: string;
   readonly poster: string;
@@ -14,13 +12,10 @@ export interface Phase {
 export interface Track {
   readonly id: string;
   readonly title: string;
-  /** Optional: some uploads carry no reliable credit, and a wrong one is worse. */
   readonly artist?: string;
   readonly film?: string;
   readonly year?: number;
-  /** Full YouTube URL or a bare 11-character video id — both are accepted. */
   readonly source: string;
-  /** Seconds of intro to skip. */
   readonly startAt?: number;
 }
 
@@ -41,26 +36,18 @@ export interface RadioState {
   readonly muted: boolean;
   readonly ready: boolean;
   readonly unlocked: boolean;
-  /**
-   * Playing, but held silent. Playback has to *start* inside the click that
-   * opened the gate or Safari refuses it later, so during the intro film the
-   * track really is running — muted — until the driver reaches for the stereo.
-   */
   readonly silenced: boolean;
   readonly released: boolean;
   readonly error: string | null;
-  /** Consecutive un-playable tracks. Stops auto-skip from looping the playlist. */
   readonly errorStreak: number;
 }
 
 export interface RadioActions {
-  /** `silent` starts playback muted, to be handed over by `release`. */
   readonly unlock: (silent?: boolean) => void;
-  /** Un-mutes and restarts the track from the top. Idempotent. */
   readonly release: () => void;
   readonly toggle: () => void;
-  /** Pause for `seconds`, then pick up where it left off. For the horn. */
   readonly duck: (seconds: number) => void;
+  readonly unduck: () => void;
   readonly next: () => void;
   readonly previous: () => void;
   readonly seekBy: (seconds: number) => void;

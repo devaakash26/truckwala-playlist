@@ -16,6 +16,7 @@ import {
 import { PLAYER, STORAGE_KEYS, TRACKS, YOUTUBE } from "@/lib/constants";
 import { clamp } from "@/lib/format";
 import { introWillPlay } from "@/lib/intro";
+import { readResume, writeResume } from "@/lib/resume";
 import type {
   PlaybackStatus,
   RadioActions,
@@ -64,6 +65,7 @@ const INITIAL_STATE: RadioState = {
 type Action =
   | { type: "ready" }
   | { type: "unlock"; silent: boolean }
+  | { type: "restore"; index: number }
   | { type: "silence" }
   | { type: "release" }
   | { type: "step"; delta: number }
@@ -87,6 +89,9 @@ function reducer(state: RadioState, action: Action): RadioState {
             silenced: action.silent,
             status: "buffering",
           };
+
+    case "restore":
+      return { ...state, index: action.index };
 
     case "silence":
       return state.silenced ? state : { ...state, silenced: true };
@@ -181,6 +186,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const [progressOwner, setProgressOwner] = useState(state.index);
   const playerRef = useRef<YTPlayer | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  /** Seconds to drop into on the first load only, from the saved bookmark. */
+  const pendingResume = useRef(0);
 
   // Snap the read-out back to zero the instant the track changes, rather than
   // waiting for the next poll to notice. React's documented "adjust state while
@@ -216,17 +223,23 @@ export function RadioProvider({ children }: { children: ReactNode }) {
               playerRef.current = event.target;
               dispatch({ type: "ready" });
 
-              // Ask for sound outright. Plenty of browsers grant it — Chrome
-              // once the visitor has listened here a few times, Safari and
-              // Firefox once the site is allowed — and when they do, the
-              // station simply starts, out loud, with nothing to press. The
-              // probe below notices if this was refused and drops to a silent
-              // start instead. Either way it must be decided *before* the load,
-              // because the mute state at that moment is what the policy judges.
-              const withFilm = introWillPlay();
-              if (withFilm) event.target.mute();
-              else event.target.unMute();
-              dispatch({ type: "unlock", silent: withFilm });
+              // Pick up wherever they left off, before anything loads.
+              const resume = readResume();
+              if (resume) {
+                const index = TRACKS.findIndex((track) => track.id === resume.id);
+                if (index >= 0) {
+                  pendingResume.current = resume.seconds;
+                  dispatch({ type: "restore", index });
+                }
+              }
+
+              // Start muted, always. That is the one form of autoplay no
+              // browser refuses, so the station is definitely rolling before we
+              // ask for anything else — no dead silent window while we find
+              // out. Sound is requested immediately afterwards, and the probe
+              // below settles whether it was granted.
+              event.target.mute();
+              dispatch({ type: "unlock", silent: true });
             },
             onStateChange: (event) => {
               if (event.data === PLAYER_STATE.PLAYING)
@@ -252,6 +265,15 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           },
         });
         playerRef.current = player;
+
+        // A cross-origin frame does not inherit the page's autoplay permission
+        // unless it is granted one. The API normally sets this itself; doing it
+        // here too costs nothing and closes the case where it has not, which
+        // would block playback no matter what we ask for.
+        const frame = host.querySelector("iframe");
+        if (frame && !frame.allow.includes("autoplay")) {
+          frame.allow = `autoplay; ${frame.allow}`.trim();
+        }
       })
       .catch((cause: Error) => {
         if (!disposed) dispatch({ type: "error", message: cause.message });
@@ -285,7 +307,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const startSeconds = track.startAt ?? 0;
+    // The bookmark applies to the first load only; every later track change
+    // starts where the track itself says to.
+    const startSeconds = pendingResume.current || track.startAt || 0;
+    pendingResume.current = 0;
     // Same reason as in onReady: the mute has to land before the load.
     if (state.silenced) player.mute();
     // Before the gate is opened we only *cue*, which fetches metadata without
@@ -326,12 +351,37 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state.status !== "playing") return;
+
+    const trackId = TRACKS[state.index].id;
+    const bookmark = () => {
+      const player = playerRef.current;
+      if (player) writeResume({ id: trackId, seconds: player.getCurrentTime() });
+    };
+
+    let sinceSave = 0;
     const id = window.setInterval(() => {
       const player = playerRef.current;
-      if (player) setProgress(player.getCurrentTime());
+      if (!player) return;
+      setProgress(player.getCurrentTime());
+
+      // Bookmark now and then rather than on every tick — a reload should land
+      // back on the same song at roughly the same line.
+      sinceSave += PLAYER.PROGRESS_TICK_MS;
+      if (sinceSave < PLAYER.RESUME_SAVE_MS) return;
+      sinceSave = 0;
+      bookmark();
     }, PLAYER.PROGRESS_TICK_MS);
-    return () => window.clearInterval(id);
-  }, [state.status]);
+
+    // Closing the tab is the likeliest way to leave, and it never gives us
+    // another tick.
+    window.addEventListener("pagehide", bookmark);
+
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("pagehide", bookmark);
+      bookmark();
+    };
+  }, [state.status, state.index]);
 
   /* --- skip past dead tracks --------------------------------------------- */
 
@@ -360,6 +410,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const duckTimer = useRef(0);
   const ducking = useRef(false);
   const released = useRef(false);
+  /** The out-loud attempt is made once per load, not once per state change. */
+  const asked = useRef(false);
   /** When we actually un-muted, so the same press is not read as a command. */
   const wokeAt = useRef(0);
   const cancelDuck = useCallback(() => {
@@ -424,6 +476,13 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         }, seconds * 1000);
       },
 
+      unduck: () => {
+        window.clearTimeout(duckTimer.current);
+        if (!ducking.current) return;
+        ducking.current = false;
+        playerRef.current?.playVideo();
+      },
+
       toggle: () => {
         cancelDuck();
         const player = playerRef.current;
@@ -478,8 +537,12 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
       nudgeVolume: (delta: number) => dispatch({ type: "nudgeVolume", delta }),
 
-      toggleMute: () =>
-        dispatch({ type: "setMuted", muted: !stateRef.current.muted }),
+      toggleMute: () => {
+        // Same guard as `toggle`: the press that turned the sound on must not
+        // then be read as a request to mute it again.
+        if (performance.now() - wokeAt.current < PLAYER.WAKE_GRACE_MS) return;
+        dispatch({ type: "setMuted", muted: !stateRef.current.muted });
+      },
     }),
     [seekTo, cancelDuck],
   );
@@ -495,25 +558,47 @@ export function RadioProvider({ children }: { children: ReactNode }) {
    * embed will sometimes mute itself and carry on rather than stopping.
    */
   useEffect(() => {
-    if (!state.ready || !state.unlocked || state.silenced || state.released) return;
+    if (!state.ready || !state.unlocked || !state.silenced || state.released) return;
+    // The film does its own handover, on the beat where the driver reaches for
+    // the stereo.
+    if (introWillPlay() || asked.current) return;
+    asked.current = true;
 
-    const id = window.setTimeout(() => {
-      const player = playerRef.current;
-      if (!player) return;
+    // Ask only once the muted start is genuinely under way. Asking any earlier
+    // is worse than useless: the request lands before the load, the load then
+    // re-applies the mute over the top of it, and the out-loud attempt never
+    // actually happens — which is what was going on here.
+    const ask = window.setTimeout(() => {
+      playerRef.current?.unMute();
+    }, PLAYER.AUTOPLAY_ASK_MS);
 
-      const running =
-        player.getPlayerState() === PLAYER_STATE.PLAYING ||
-        player.getPlayerState() === PLAYER_STATE.BUFFERING;
-      if (running && !player.isMuted()) return;
+    const verdict = window.setTimeout(
+      () => {
+        const player = playerRef.current;
+        if (!player) return;
 
-      // Refused. Fall back to a silent start, which is never refused, and let
-      // the wake listener below hand the sound over on the first touch.
-      player.mute();
-      player.playVideo();
-      dispatch({ type: "silence" });
-    }, PLAYER.AUTOPLAY_PROBE_MS);
+        const running =
+          player.getPlayerState() === PLAYER_STATE.PLAYING ||
+          player.getPlayerState() === PLAYER_STATE.BUFFERING;
+        // Still running and still un-muted means it was granted.
+        if (running && !player.isMuted()) {
+          released.current = true;
+          dispatch({ type: "release" });
+          return;
+        }
 
-    return () => window.clearTimeout(id);
+        // Refused. Back to the silent start, which is never refused, and the
+        // wake listener below hands the sound over on the first touch.
+        player.mute();
+        player.playVideo();
+      },
+      PLAYER.AUTOPLAY_ASK_MS + PLAYER.AUTOPLAY_PROBE_MS,
+    );
+
+    return () => {
+      window.clearTimeout(ask);
+      window.clearTimeout(verdict);
+    };
   }, [state.ready, state.unlocked, state.silenced, state.released]);
 
   // Bound only while the station is still silent, and torn down by that flag
