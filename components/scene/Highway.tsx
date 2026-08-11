@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import {
   createHighway,
   drawHighway,
+  flankOpen,
   HIGHWAY,
   makeView,
   stepHighway,
+  TRUCK_DISTANCE,
   type HighwayState,
   type View,
 } from "@/lib/highway";
@@ -22,6 +24,13 @@ const STILL_FRAME_SECONDS = 1 / 60;
 
 interface HighwayProps {
   phase: PhaseId | null;
+  /**
+   * The truck lives in the DOM but rides the canvas's camera, so the loop
+   * writes its lateral offset and how much flank is showing straight onto the
+   * element as custom properties — a per-frame React render for two numbers
+   * would be absurd.
+   */
+  truckRef?: RefObject<HTMLDivElement | null>;
 }
 
 /**
@@ -33,7 +42,7 @@ interface HighwayProps {
  * it to a rAF loop; phase changes arrive through a ref, so a rollover never
  * costs a re-render.
  */
-export function Highway({ phase }: HighwayProps) {
+export function Highway({ phase, truckRef }: HighwayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const phaseRef = useRef<PhaseId>(phase ?? DEFAULT_PHASE_ID);
   const reducedMotion = usePrefersReducedMotion();
@@ -63,12 +72,23 @@ export function Highway({ phase }: HighwayProps) {
       view = makeView(width, height);
     };
 
+    const paint = (dt: number) => {
+      stepHighway(state, dt, phaseRef.current);
+      // drawHighway resolves the camera onto the view, so read it back after.
+      drawHighway(ctx, state, view);
+
+      const truck = truckRef?.current;
+      if (!truck) return;
+      const shift = (-view.cameraX * view.focal) / TRUCK_DISTANCE;
+      truck.style.setProperty("--truck-drift", `${shift.toFixed(1)}px`);
+      truck.style.setProperty("--flank-open", flankOpen(view.cameraX).toFixed(3));
+    };
+
     const render = (time: number) => {
       // A dropped frame should not teleport the road forward.
       const dt = last === 0 ? STILL_FRAME_SECONDS : Math.min((time - last) / 1000, MAX_FRAME_SECONDS);
       last = time;
-      stepHighway(state, dt, phaseRef.current);
-      drawHighway(ctx, state, view);
+      paint(dt);
       frame = requestAnimationFrame(render);
     };
 
@@ -88,8 +108,7 @@ export function Highway({ phase }: HighwayProps) {
 
     if (reducedMotion) {
       // Settle the palette and paint a single frame, then leave it alone.
-      stepHighway(state, STILL_FRAME_SECONDS, phaseRef.current);
-      drawHighway(ctx, state, view);
+      paint(STILL_FRAME_SECONDS);
     } else {
       // A backgrounded tab still fires rAF in some browsers; stopping outright
       // is cheaper and means we never integrate a multi-minute delta.
@@ -104,7 +123,7 @@ export function Highway({ phase }: HighwayProps) {
     }
 
     return () => observer.disconnect();
-  }, [reducedMotion]);
+  }, [reducedMotion, truckRef]);
 
   return <canvas ref={canvasRef} className="highway" />;
 }

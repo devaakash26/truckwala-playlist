@@ -38,6 +38,9 @@ const STATUS_BY_PLAYER_STATE: Record<number, PlaybackStatus> = {
   [PLAYER_STATE.CUED]: "cued",
 };
 
+/** Anything that counts as the visitor showing up. */
+const WAKE_EVENTS = ["pointerdown", "keydown", "touchstart"] as const;
+
 const INITIAL_STATE: RadioState = {
   index: 0,
   status: "connecting",
@@ -183,6 +186,13 @@ export function RadioProvider({ children }: { children: ReactNode }) {
             onReady: (event) => {
               playerRef.current = event.target;
               dispatch({ type: "ready" });
+              // Mute *before* anything is asked to play. An autoplay attempt
+              // that is still unmuted gets refused outright and leaves the
+              // player sitting paused, rather than playing silently as
+              // intended — the volume effect runs a beat too late to prevent
+              // that on its own.
+              event.target.mute();
+              dispatch({ type: "unlock", silent: true });
             },
             onStateChange: (event) => {
               if (event.data === PLAYER_STATE.PLAYING) forceLowestQuality(event.target);
@@ -234,12 +244,14 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     }
 
     const startSeconds = track.startAt ?? 0;
+    // Same reason as in onReady: the mute has to land before the load.
+    if (state.silenced) player.mute();
     // Before the gate is opened we only *cue*, which fetches metadata without
     // streaming; `unlocked` flipping true re-runs this and starts playback
     // inside the user-gesture window.
     if (state.unlocked) player.loadVideoById({ videoId, startSeconds });
     else player.cueVideoById({ videoId, startSeconds });
-  }, [state.index, state.ready, state.unlocked]);
+  }, [state.index, state.ready, state.unlocked, state.silenced]);
 
   /* --- volume ------------------------------------------------------------ */
 
@@ -295,6 +307,17 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     stateRef.current = state;
   }, [state]);
 
+  // A duck in progress owns the transport. Any deliberate press cancels it, so
+  // the horn can never restart something the listener just stopped.
+  const duckTimer = useRef(0);
+  const ducking = useRef(false);
+  const cancelDuck = useCallback(() => {
+    window.clearTimeout(duckTimer.current);
+    ducking.current = false;
+  }, []);
+
+  useEffect(() => cancelDuck, [cancelDuck]);
+
   const seekTo = useCallback((seconds: number) => {
     const player = playerRef.current;
     if (!player) return;
@@ -320,7 +343,25 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         if (player.getPlayerState() !== PLAYER_STATE.PLAYING) player.playVideo();
       },
 
+      duck: (seconds: number) => {
+        const player = playerRef.current;
+        if (!player) return;
+        window.clearTimeout(duckTimer.current);
+        // Only take the music away if it was actually playing — a horn should
+        // not start a paused station.
+        if (player.getPlayerState() === PLAYER_STATE.PLAYING) {
+          ducking.current = true;
+          player.pauseVideo();
+        }
+        duckTimer.current = window.setTimeout(() => {
+          if (!ducking.current) return;
+          ducking.current = false;
+          playerRef.current?.playVideo();
+        }, seconds * 1000);
+      },
+
       toggle: () => {
+        cancelDuck();
         const player = playerRef.current;
         if (!player) return;
         const playerState = player.getPlayerState();
@@ -337,9 +378,13 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         }
       },
 
-      next: () => dispatch({ type: "step", delta: 1 }),
+      next: () => {
+        cancelDuck();
+        dispatch({ type: "step", delta: 1 });
+      },
 
       previous: () => {
+        cancelDuck();
         const player = playerRef.current;
         // Same as an FM deck: a late ⏮ restarts the track, an early one goes back.
         if (player && player.getCurrentTime() > PLAYER.RESTART_THRESHOLD_SECONDS) seekTo(0);
@@ -359,8 +404,32 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
       toggleMute: () => dispatch({ type: "setMuted", muted: !stateRef.current.muted }),
     }),
-    [seekTo],
+    [seekTo, cancelDuck],
   );
+
+  /* --- turning the sound on ---------------------------------------------- */
+
+  useEffect(() => {
+    const wake = () => {
+      const player = playerRef.current;
+      if (!player) return;
+
+      actions.release();
+      if (!stateRef.current.muted) player.unMute();
+      // A browser can refuse the first attempt if it does not count that
+      // interaction as activation, so stay attached until it actually sticks.
+      if (!player.isMuted()) detach();
+    };
+
+    const detach = () => {
+      for (const type of WAKE_EVENTS) window.removeEventListener(type, wake);
+    };
+
+    for (const type of WAKE_EVENTS) {
+      window.addEventListener(type, wake, { passive: true });
+    }
+    return detach;
+  }, [actions]);
 
   return (
     <ActionsContext.Provider value={actions}>

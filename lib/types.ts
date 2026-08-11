@@ -14,9 +14,10 @@ export interface Phase {
 export interface Track {
   readonly id: string;
   readonly title: string;
-  readonly artist: string;
-  readonly film: string;
-  readonly year: number;
+  /** Optional: some uploads carry no reliable credit, and a wrong one is worse. */
+  readonly artist?: string;
+  readonly film?: string;
+  readonly year?: number;
   /** Full YouTube URL or a bare 11-character video id — both are accepted. */
   readonly source: string;
   /** Seconds of intro to skip. */
@@ -57,6 +58,8 @@ export interface RadioActions {
   /** Un-mutes and restarts the track from the top. Idempotent. */
   readonly release: () => void;
   readonly toggle: () => void;
+  /** Pause for `seconds`, then pick up where it left off. For the horn. */
+  readonly duck: (seconds: number) => void;
   readonly next: () => void;
   readonly previous: () => void;
   readonly seekBy: (seconds: number) => void;

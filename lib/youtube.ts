@@ -36,6 +36,7 @@ export interface YTPlayer {
   setVolume(volume: number): void;
   mute(): void;
   unMute(): void;
+  isMuted(): boolean;
   setPlaybackQuality(quality: string): void;
   getAvailableQualityLevels(): string[];
   destroy(): void;
@@ -123,6 +124,17 @@ export function parseVideoId(source: string): string | null {
   const trimmed = source.trim();
   if (BARE_ID.test(trimmed)) return trimmed;
   return URL_ID.exec(trimmed)?.[1] ?? null;
+}
+
+/**
+ * Cover art for the disc.
+ *
+ * `mqdefault` is the largest thumbnail YouTube guarantees for every video that
+ * is *not* letterboxed — `hqdefault` pads 16:9 uploads with black bars, which
+ * is exactly what you cannot have inside a circular crop.
+ */
+export function artworkUrl(videoId: string): string {
+  return `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`;
 }
 
 /**

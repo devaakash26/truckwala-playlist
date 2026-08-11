@@ -2,22 +2,14 @@
 
 import { useKeyboardControls } from "@/hooks/useKeyboardControls";
 import { useMediaSession } from "@/hooks/useMediaSession";
-import { useTimeOfDay } from "@/hooks/useTimeOfDay";
 import { STATION } from "@/lib/constants";
-import { getPhase } from "@/lib/phase";
 import { useIntro } from "@/components/intro/IntroProvider";
-import { useRadioState } from "@/components/radio/RadioProvider";
+import { Disc } from "@/components/radio/Disc";
+import { HornButton } from "@/components/radio/HornButton";
+import { useCurrentTrack, useRadioState } from "@/components/radio/RadioProvider";
 import { SeekBar } from "@/components/radio/SeekBar";
-import { SignalMeter } from "@/components/radio/SignalMeter";
-import { TrackTicker } from "@/components/radio/TrackTicker";
 import { TransportControls } from "@/components/radio/TransportControls";
 import { VolumeControl } from "@/components/radio/VolumeControl";
-
-function PhaseBadge() {
-  const phaseId = useTimeOfDay();
-  // Blank until the client reads its own clock — see useTimeOfDay.
-  return <span className="badge">{phaseId ? getPhase(phaseId).label : "—"}</span>;
-}
 
 export function RadioConsole() {
   const intro = useIntro();
@@ -25,28 +17,33 @@ export function RadioConsole() {
   // pausing a track nobody can hear yet.
   useKeyboardControls(intro.status !== "playing");
   useMediaSession();
-  const { status } = useRadioState();
+
+  const track = useCurrentTrack();
+  const { error } = useRadioState();
+  const credits = [track.artist, track.film, track.year].filter(Boolean).join("  ·  ");
 
   return (
-    <section className="console" aria-label={`${STATION.NAME} ${STATION.SUFFIX} player`}>
-      <header className="console__head">
-        <span className="lamp" data-live={status === "playing"} aria-hidden />
-        <span className="brand">
-          {STATION.NAME}
-          <em>{STATION.SUFFIX}</em>
-        </span>
-        <span className="freq tabular">{STATION.FREQUENCY}</span>
-        <PhaseBadge />
-        <SignalMeter />
-      </header>
+    <section className="deck" aria-label={`${STATION.NAME} ${STATION.SUFFIX} player`}>
+      <Disc />
 
-      <TrackTicker />
-      <SeekBar />
+      <div className="deck__body">
+        <h2 className="deck__title" title={track.title}>
+          {track.title}
+        </h2>
+        <p className="deck__credits" data-error={error !== null}>
+          {error ?? credits}
+        </p>
 
-      <footer className="console__foot">
-        <TransportControls />
-        <VolumeControl />
-      </footer>
+        <SeekBar />
+
+        <div className="deck__row">
+          <TransportControls />
+          <div className="deck__aux">
+            <HornButton />
+            <VolumeControl />
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

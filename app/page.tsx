@@ -1,4 +1,7 @@
-import { StartGate } from "@/components/StartGate";
+import { AudioHint } from "@/components/AudioHint";
+import { IstClock } from "@/components/IstClock";
+import { Listeners } from "@/components/Listeners";
+import { StationBadge } from "@/components/StationBadge";
 import { IntroProvider } from "@/components/intro/IntroProvider";
 import { IntroSequence } from "@/components/intro/IntroSequence";
 import { RadioConsole } from "@/components/radio/RadioConsole";
@@ -10,10 +13,13 @@ export default function Home() {
     <RadioProvider>
       <IntroProvider>
         <Backdrop />
+        <IstClock />
+        <StationBadge />
+        <Listeners />
         <main className="stage">
+          <AudioHint />
           <RadioConsole />
         </main>
-        <StartGate />
         <IntroSequence />
       </IntroProvider>
     </RadioProvider>

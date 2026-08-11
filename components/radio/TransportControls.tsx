@@ -22,7 +22,7 @@ export function TransportControls() {
   const isBusy = status === "connecting" || status === "buffering";
 
   return (
-    <div className="deck" role="group" aria-label="Playback controls">
+    <div className="transport" role="group" aria-label="Playback controls">
       <button
         type="button"
         className="deck-btn"

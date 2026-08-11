@@ -92,17 +92,17 @@ export function SpeakerIcon({ muted }: { muted: boolean }) {
   );
 }
 
+/**
+ * A bulb horn — flared bell, neck, squeeze bulb. Deliberately not a cone with
+ * sound waves: that is the volume control sitting right next to it, and two
+ * speakers side by side told nobody anything.
+ */
 export function HornIcon() {
   return (
-    <svg {...BASE} viewBox="0 0 32 32">
-      <path d="M4 13.2h4.6L18 6.7a1 1 0 0 1 1.6.8v17a1 1 0 0 1-1.6.8l-9.4-6.5H4a1.4 1.4 0 0 1-1.4-1.4v-2.8A1.4 1.4 0 0 1 4 13.2Z" />
-      <path
-        d="M23.4 10.6a8.6 8.6 0 0 1 0 10.8M27.4 7a13.4 13.4 0 0 1 0 18"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+    <svg {...BASE}>
+      <path d="M12.6 9.1 19.4 4a1 1 0 0 1 1.6.8v14.4a1 1 0 0 1-1.6.8l-6.8-5.1Z" />
+      <rect x="9.1" y="9.1" width="3.9" height="5.8" rx="1.1" />
+      <circle cx="5.4" cy="12" r="3.3" />
     </svg>
   );
 }

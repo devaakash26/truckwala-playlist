@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useTimeOfDay } from "@/hooks/useTimeOfDay";
@@ -58,6 +58,7 @@ export function Backdrop() {
     previous: null,
   });
   const [missing, setMissing] = useState<readonly PhaseId[]>([]);
+  const truckRef = useRef<HTMLDivElement>(null);
 
   // Promote the new phase during render so the fade starts on the same frame
   // the clock rolls over.
@@ -91,8 +92,9 @@ export function Backdrop() {
         <div className="sky" />
         <div className="celestial" />
         <div className="stars" />
-        <Highway phase={phase} />
-        <TruckRear />
+        {/* The canvas owns the camera, so it drives where the truck sits. */}
+        <Highway phase={phase} truckRef={truckRef} />
+        <TruckRear ref={truckRef} />
       </div>
 
       {playable.map((phaseId) => (

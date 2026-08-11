@@ -21,9 +21,20 @@ export interface ScenePalette {
   readonly prop: RGB;
   readonly dust: RGB;
   readonly beam: RGB;
+  readonly cloud: RGB;
+  /** Bloom sitting on the horizon where the sun is. */
+  readonly glare: RGB;
+  /** Sun's horizontal position, 0–1 across the frame. Mirrors --sun-x in the CSS. */
+  readonly glareX: number;
+  readonly glareStrength: number;
   /** How much of our own headlight wash reaches the tarmac. */
   readonly beamStrength: number;
   readonly dustOpacity: number;
+  readonly cloudOpacity: number;
+  /** Lit-up settlements on the horizon. */
+  readonly townGlow: number;
+  /** Catseyes down the road edges. */
+  readonly studGlint: number;
   /** Drives how hard distant objects wash out into the haze. */
   readonly aerial: number;
 }
@@ -40,8 +51,15 @@ export const SCENE_PALETTE: Record<PhaseId, ScenePalette> = {
     prop: [26, 24, 38],
     dust: [240, 190, 150],
     beam: [255, 214, 160],
+    cloud: [255, 200, 170],
+    glare: [255, 190, 130],
+    glareX: 0.74,
+    glareStrength: 0.55,
     beamStrength: 0.45,
     dustOpacity: 0.3,
+    cloudOpacity: 0.5,
+    townGlow: 0.35,
+    studGlint: 0.5,
     aerial: 0.72,
   },
   day: {
@@ -55,8 +73,15 @@ export const SCENE_PALETTE: Record<PhaseId, ScenePalette> = {
     prop: [46, 58, 52],
     dust: [228, 216, 192],
     beam: [255, 240, 200],
+    cloud: [255, 255, 255],
+    glare: [255, 250, 226],
+    glareX: 0.66,
+    glareStrength: 0.3,
     beamStrength: 0,
     dustOpacity: 0.3,
+    cloudOpacity: 0.75,
+    townGlow: 0,
+    studGlint: 0.1,
     aerial: 0.82,
   },
   dusk: {
@@ -70,8 +95,15 @@ export const SCENE_PALETTE: Record<PhaseId, ScenePalette> = {
     prop: [24, 14, 26],
     dust: [255, 160, 100],
     beam: [255, 180, 110],
+    cloud: [255, 150, 110],
+    glare: [255, 140, 70],
+    glareX: 0.22,
+    glareStrength: 0.85,
     beamStrength: 0.62,
     dustOpacity: 0.34,
+    cloudOpacity: 0.6,
+    townGlow: 0.5,
+    studGlint: 0.55,
     aerial: 0.76,
   },
   night: {
@@ -85,8 +117,15 @@ export const SCENE_PALETTE: Record<PhaseId, ScenePalette> = {
     prop: [6, 8, 18],
     dust: [120, 150, 220],
     beam: [255, 226, 170],
+    cloud: [54, 74, 132],
+    glare: [140, 172, 255],
+    glareX: 0.76,
+    glareStrength: 0.18,
     beamStrength: 1,
     dustOpacity: 0.22,
+    cloudOpacity: 0.34,
+    townGlow: 1,
+    studGlint: 1,
     aerial: 0.6,
   },
 };

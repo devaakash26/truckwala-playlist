@@ -1,9 +1,10 @@
 # Truckwala FM
 
-A one-station radio. Old Indian highway songs play in order over a cinematic
+A one-station radio. 90s Hindi film songs play in order over a cinematic
 truck-on-the-highway backdrop that follows the listener's own clock — dawn, day,
 dusk, night. There is no track list and no search, on purpose: the only controls
-are previous, rewind, play/pause, forward, next.
+are previous, rewind, play/pause, forward, next, and a record that turns while
+the station is live.
 
 ```bash
 npm run dev     # http://localhost:3000
@@ -33,9 +34,15 @@ second and a half, and remembered per tab, so a reload goes straight to the
 radio. No clips on disk means no film — the station opens immediately.
 
 **The backdrop** is three things stacked. Underneath, an infinite drive rendered
-to a canvas: a flat ground plane under a pinhole camera, with roadside props,
-oncoming traffic and dust recycled with fresh randomness as they pass, and a
-hand-drawn SVG truck bobbing ahead of you on two out-of-phase cycles. Above it,
+to a canvas: a ground plane under a pinhole camera, with roadside props,
+oncoming traffic, overpasses and dust recycled with fresh randomness as they
+pass, and a hand-drawn SVG truck bobbing ahead of you on two out-of-phase
+cycles. The road bends and climbs — both are `amount × (z − NEAR_Z)²`, driven off
+distance travelled, so the offset vanishes at the bumper and piles up toward the
+horizon the way a real bend does. That means the road is no longer a quad, so
+each band is walked in 24 geometrically-spaced steps; screen y goes as `1/z`
+while the bend's screen x goes as `z`, and equal ratios are the spacing that
+keeps both ends under half a pixel of faceting. Above it,
 the clip for the current phase fades in once it decodes. Only two clips are ever
 mounted (the outgoing one lingers for a single crossfade), and once one is
 visible the whole drawn scene is set to `visibility: hidden`, which parks the rAF
@@ -57,9 +64,10 @@ couple of seconds rather than snapping.
 Everything tunable lives in [`lib/constants.ts`](lib/constants.ts).
 
 - **Playlist** — edit `TRACKS`. `source` takes a full YouTube URL of any shape
-  (`watch`, `youtu.be`, `embed`, `shorts`) or a bare 11-character id. Add
-  `startAt` to skip an intro. A video with embedding disabled is detected and
-  skipped automatically.
+  (`watch`, `youtu.be`, `embed`, `shorts`) or a bare 11-character id. `artist`,
+  `film` and `year` are optional and simply omitted from the credit line when
+  absent — a missing credit beats a wrong one. Add `startAt` to skip an intro. A
+  video with embedding disabled is detected and skipped automatically.
 - **Clips** — see [`public/scenes/README.md`](public/scenes/README.md) for the
   shot list, the generation prompts and encoding specs. Drop the files in and
   they are picked up with no code change.
@@ -69,7 +77,21 @@ Everything tunable lives in [`lib/constants.ts`](lib/constants.ts).
   early it fires, skip delay.
 - **The drive** — `HIGHWAY` in [`lib/highway.ts`](lib/highway.ts) is all in
   metres and seconds: camera height, speed, road width, how far apart the poles
-  stand. `SCENE_PALETTE` in [`lib/palette.ts`](lib/palette.ts) colours it.
+  stand, how sharply the road bends. `SCENE_PALETTE` in
+  [`lib/palette.ts`](lib/palette.ts) colours it.
+- **The tailgate** — `TAILGATE.SLOGAN` is the big line across the panel and
+  `TAILGATE.FLANK` is painted down the truck's left side. `SHAYARI` is the small
+  band under the panel: one entry per truck, picked by track index, so a new song
+  brings a differently-lettered truck. Type size is solved from the cluster
+  count everywhere — Devanagari matras stack rather than advance, so `.length`
+  badly overcounts.
+- **The overtake** — `DRIFT_*`. Every 46 s the camera really does pull into the
+  next lane, hold, and tuck back in. The whole scene parallaxes because
+  `cameraX` is part of the projection, the truck slides the other way, and its
+  flank swings into view. How far it can go is set by the frame rather than the
+  road: the truck must not run off the edge, which on a phone leaves almost no
+  room, so the move degrades to a gentle parallax with no flank — which is what
+  being stuck behind a truck actually looks like.
 - **Feel** — `PLAYER` (seek step, tick rate) and `SCENE` (crossfade, meter).
 
 ## Controls
@@ -85,11 +107,29 @@ Everything tunable lives in [`lib/constants.ts`](lib/constants.ts).
 Media keys and the lock screen work too, where the browser lets the top document
 own the media session.
 
-## Two honest limits
+**The deck** is a record and five buttons. Cover art is the track's own YouTube
+thumbnail (`mqdefault` — the largest size YouTube guarantees without letterbox
+bars, which matters inside a circular crop), so adding a song needs no asset.
+Pausing sets `animation-play-state: paused` rather than stopping the animation,
+so the record holds its angle and picks up mid-turn on the next play.
 
-- **No real spectrum analyser.** The audio lives in a cross-origin iframe, so the
-  Web Audio API can never reach the samples. The meter is a VU-style dial that
-  moves while the station is live — see the comment in `SignalMeter`.
+**The live strip** in the bottom-left is real presence, not a number on a timer:
+`/api/live` is an SSE endpoint holding one connection per open tab and
+broadcasting the count on every join and leave. Beside it is the wall clock in
+Asia/Kolkata, subscribed through `useSyncExternalStore` rather than mirrored into
+state — a clock is an external source of truth, and this way it costs no effect
+and no extra render.
+
+## Three honest limits
+
+- **Presence is per process.** The listener set lives in server memory, so it is
+  correct behind `next start` or any single container, and on a serverless
+  platform each instance would only count its own share. Going wider needs Redis
+  or a hosted presence service — not more code in the route.
 - **YouTube is the upstream.** A video that gets taken down or has embedding
-  turned off stops working; the player detects it, says so in the ticker, and
+  turned off stops working; the player detects it, says so under the title, and
   moves to the next track.
+- **No spectrum analyser is possible.** The audio lives in a cross-origin
+  iframe, so the Web Audio API can never reach the samples. The turning record
+  is the playing indicator instead — it is honest, because it is driven by the
+  actual player state.
