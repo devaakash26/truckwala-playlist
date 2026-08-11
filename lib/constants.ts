@@ -21,32 +21,38 @@ export const PHASES: readonly Phase[] = [
 
 export const DEFAULT_PHASE_ID = PHASES[PHASES.length - 1].id;
 
-/**
- * The station playlist — the 90s Hindi film songs that actually play on a
- * highway. `source` takes a full YouTube URL of any shape or a bare
- * 11-character id, so swapping a track never touches another file.
- */
 export const TRACKS: readonly Track[] = [
+  { id: "chalte-chalte", title: "Chalte Chalte Mere Yeh Geet", artist: "Kishore Kumar", film: "Chalte Chalte", year: 1976, source: "bQkRBvIBkeo" },
   { id: "tumse-milne-ko-dil", title: "Tumse Milne Ko Dil", artist: "Alka Yagnik & Kumar Sanu", film: "Phool Aur Kaante", year: 1991, source: "5y_TCKNzAMI" },
   { id: "saaton-janam", title: "Saaton Janam Main Tere", artist: "Kumar Sanu & Alka Yagnik", film: "Dilwale", year: 1994, source: "oFxbBeYhLqM" },
+  { id: "gaadi-bula-rahi-hai", title: "Gaadi Bula Rahi Hai", artist: "Kishore Kumar", film: "Dost", year: 1974, source: "3V8Y8GGnLvk" },
   { id: "mujhse-mohabbat", title: "Mujhse Mohabbat Ka Izhaar Karti", artist: "Kumar Sanu & Alka Yagnik", film: "Hum Hain Rahi Pyar Ke", year: 1993, source: "NwTTV_k656Q" },
   { id: "main-duniya-bhula-doonga", title: "Main Duniya Bhula Doonga", artist: "Anuradha Paudwal & Kumar Sanu", film: "Aashiqui", year: 1990, source: "otQmzlm-s7Q" },
+  { id: "musafir-hoon-yaaron", title: "Musafir Hoon Yaaron", artist: "Kishore Kumar", film: "Parichay", year: 1972, source: "1DwROkoAAcI" },
   { id: "tere-dard-se-dil", title: "Tere Dard Se Dil", artist: "Kumar Sanu", film: "Deewana", year: 1992, source: "TgHYW8ubFko" },
   { id: "dekha-hai-pehli-baar", title: "Dekha Hai Pehli Baar", artist: "Alka Yagnik & S. P. Balasubrahmanyam", film: "Saajan", year: 1991, source: "WAgJ8KM5AVQ" },
+  { id: "zindagi-ka-safar", title: "Zindagi Ka Safar", artist: "Kishore Kumar", film: "Safar", year: 1970, source: "mA1CM_UpLss" },
   { id: "jeeta-tha-jiske-liye", title: "Jeeta Tha Jiske Liye", artist: "Kumar Sanu & Alka Yagnik", film: "Dilwale", year: 1994, source: "CTuvMubzXpU" },
   { id: "tumhein-apna-banane-ki-kasam", title: "Tumhein Apna Banane Ki Kasam", artist: "Anuradha Paudwal & Kumar Sanu", film: "Sadak", year: 1991, source: "tPNwGuu_rQ4" },
+  { id: "chala-jata-hoon", title: "Chala Jata Hoon", artist: "Kishore Kumar", film: "Mere Jeevan Saathi", year: 1972, source: "UNjhqT_hlbg" },
   { id: "ek-ladki-ko-dekha", title: "Ek Ladki Ko Dekha", artist: "Kumar Sanu", film: "1942: A Love Story", year: 1994, source: "htMvfOfixuM" },
   { id: "tumsa-koi-pyaara", title: "Tumsa Koi Pyaara", artist: "Kumar Sanu & Alka Yagnik", film: "Khuddar", year: 1994, source: "3NWMK2MRqIk" },
+  { id: "o-saathi-re", title: "O Saathi Re", artist: "Kishore Kumar", film: "Muqaddar Ka Sikandar", year: 1978, source: "Je1zop7EEUE" },
   { id: "achha-sila-diya", title: "Achha Sila Diya Toone", film: "Bewafa Sanam", year: 1995, source: "G7AdjVDBLO8" },
   { id: "woh-meri-neend", title: "Woh Meri Neend Mera Chain", artist: "Sadhana Sargam", film: "Hum Hain Rahi Pyar Ke", year: 1993, source: "bga_0ziOOfQ" },
+  { id: "ek-ajnabee-haseena-se", title: "Ek Ajnabee Haseena Se", artist: "Kishore Kumar", film: "Ajnabee", year: 1974, source: "0HqHruwzusM" },
   { id: "tu-meri-zindagi-hai", title: "Tu Meri Zindagi Hai", artist: "Anuradha Paudwal & Kumar Sanu", film: "Aashiqui", year: 1990, source: "oEg_iXEWlt4" },
   { id: "raah-mein-unse", title: "Raah Mein Unse Mulaqat", artist: "Kumar Sanu & Alka Yagnik", film: "Vijaypath", year: 1994, source: "dDR4oiyjUBA" },
+  { id: "diye-jalte-hain", title: "Diye Jalte Hain", artist: "Kishore Kumar", film: "Namak Haraam", year: 1973, source: "Wqpxj9lj9T4" },
   { id: "chhupana-bhi-nahin-aata", title: "Chhupana Bhi Nahin Aata", film: "Baazigar", year: 1993, source: "fg9G1dacXjk" },
   { id: "nahin-yeh-ho-nahin-sakta", title: "Nahin Yeh Ho Nahin Sakta", artist: "Kumar Sanu & Sadhana Sargam", film: "Barsaat", year: 1995, source: "RjJxWRFfG3s" },
+  { id: "chingari-koi-bhadke", title: "Chingari Koi Bhadke", artist: "Kishore Kumar", film: "Amar Prem", year: 1972, source: "lzIXhfcgUWI" },
   { id: "kitna-haseen-chehra", title: "Kitna Haseen Chehra", artist: "Kumar Sanu", film: "Dilwale", year: 1994, source: "qGOTe3KmCdY" },
   { id: "tere-dar-par-sanam", title: "Tere Dar Par Sanam", artist: "Kumar Sanu", film: "Phir Teri Kahani Yaad Aayee", year: 1993, source: "5dWbn_qER3s" },
+  { id: "ruk-jana-nahin", title: "Ruk Jana Nahin", artist: "Kishore Kumar", film: "Imtihan", year: 1974, source: "LvVIz1pkQ1k" },
   { id: "maine-pyar-tumhi-se-kiya", title: "Maine Pyar Tumhi Se Kiya Hai", artist: "Anuradha Paudwal & Kumar Sanu", film: "Phool Aur Kaante", year: 1991, source: "-N-k56i7M2k" },
   { id: "tum-to-thehre-pardesi", title: "Tum To Thehre Pardesi", artist: "Altaf Raja", year: 1997, source: "lRBIcaSV-Ns" },
+  { id: "pal-pal-dil-ke-paas", title: "Pal Pal Dil Ke Paas", artist: "Kishore Kumar", film: "Blackmail", year: 1973, source: "QwLQ4_gkvsE" },
   { id: "chehra-kya-dekhte-ho", title: "Chehra Kya Dekhte Ho", artist: "Asha Bhosle & Kumar Sanu", film: "Salaami", year: 1994, source: "9v2bq2JHt4I" },
   { id: "is-tarah-aashiqui-ka", title: "Is Tarah Aashiqui Ka", artist: "Kumar Sanu", film: "Imtihan", year: 1994, source: "Y-o8NQ8Y36A" },
   { id: "kahin-mujhe-pyar-hua", title: "Kahin Mujhe Pyar Hua Toh Nahin", artist: "Alka Yagnik & Kumar Sanu", film: "Rang", year: 1993, source: "2nypvYilIkA" },

@@ -8,21 +8,12 @@ import {
 } from "@/lib/palette";
 import type { PhaseId } from "@/lib/types";
 
-/* -------------------------------------------------------------------------- */
-/* World                                                                       */
-/* Distances are metres, so every number below is one you can picture.         */
-/* -------------------------------------------------------------------------- */
-
 export const HIGHWAY = {
-  /** Eye line, as a fraction of canvas height. */
   HORIZON: 0.545,
-  /** Focal length as a fraction of canvas height — the lens. */
   FOCAL: 0.95,
   CAMERA_HEIGHT: 2.75,
-  /** Nearest drawn distance; chosen so the tarmac reaches the bottom edge. */
   NEAR_Z: 4.6,
   FAR_Z: 300,
-  /** ~97 km/h. */
   SPEED: 27,
 
   ROAD_HALF: 5.6,
@@ -32,7 +23,6 @@ export const HIGHWAY = {
   LANE_WIDTH: 0.17,
   DASH_LENGTH: 3.4,
   DASH_GAP: 7.4,
-  /** Past this the dashes are sub-pixel; drawing them is wasted work. */
   DASH_FAR_Z: 200,
 
   POLE_COUNT: 7,
@@ -44,13 +34,10 @@ export const HIGHWAY = {
   PROP_COUNT: 26,
   PROP_SPREAD: 26,
   DUST_COUNT: 44,
-  /** Motes hang in the air, so they stream past a little slower than the road. */
   DUST_DRAG: 0.82,
 
-  /** Catseyes down both edges — the thing that makes a night road read as a road. */
   STUD_SPACING: 14,
   STUD_FAR_Z: 150,
-  /** Dust the truck ahead kicks up, living between it and the camera. */
   PLUME_COUNT: 34,
   PLUME_RISE: 1.5,
   PATCH_COUNT: 7,
@@ -58,13 +45,7 @@ export const HIGHWAY = {
   CLOUD_DRIFT: 0.0042,
   TOWN_COUNT: 4,
 
-  /**
-   * The road is not straight. Lateral sweep and elevation are both applied as
-   * `amount × (z − NEAR_Z)²`, the classic pseudo-3D trick: the offset vanishes
-   * at the bumper and piles up toward the horizon, which is exactly how a bend
-   * or a crest reads from inside a cab. Both are driven off distance travelled,
-   * so the shape of the road is deterministic rather than jittery.
-   */
+
   ROAD_SEGMENTS: 24,
   CURVE_AMPLITUDE: 2.2e-4,
   CURVE_PERIOD_A: 900,
@@ -72,22 +53,14 @@ export const HIGHWAY = {
   HILL_AMPLITUDE: 4e-5,
   HILL_PERIOD_A: 640,
   HILL_PERIOD_B: 260,
-  /** Pixels the horizon scenery slides for one unit of curve. */
   RIDGE_CURVE_GAIN: 26_000,
-
-  /**
-   * Every so often the camera pulls into the next lane, holds alongside, and
-   * tucks back in — which is the only angle from which the truck's flank, and
-   * what is painted on it, is visible at all.
-   */
   DRIFT_METRES: 5,
   DRIFT_MOVE_SECONDS: 3.4,
   DRIFT_HOLD_SECONDS: 5.5,
   DRIFT_EVERY_SECONDS: 46,
-  /** Pixels of frame to keep beyond the truck at full pull-out. */
   DRIFT_EDGE_MARGIN: 16,
+  DRIFT_EDGE_FRACTION: 0.045,
 
-  /** Metres between overpasses. */
   BRIDGE_MIN_GAP: 700,
   BRIDGE_MAX_GAP: 1600,
   BRIDGE_CLEARANCE: 6.2,
@@ -105,37 +78,21 @@ export const HIGHWAY = {
   TRAFFIC_MAX_GAP: 15,
   TRAFFIC_CLOSING_SPEED: 21,
 
-  /** Seconds for the canvas palette to reach a new phase. */
   PALETTE_TAU: 0.7,
   MAX_DPR: 2,
 } as const;
 
-/** Measurements of the truck artwork, in its own viewBox units. */
 export const TRUCK = {
   VIEWBOX_WIDTH: 340,
   VIEWBOX_HEIGHT: 440,
-  /** Metres across the full 340-unit viewBox. */
   WIDTH_METRES: 3.03,
-  /** Nose to tail. Sets how much flank a given camera drift uncovers. */
   BODY_LENGTH_METRES: 7.5,
-  /** viewBox height ÷ width. */
   ASPECT: 440 / 340,
-  /** Where the tyres meet the ground, 0–1 down the viewBox. */
   WHEEL_LINE: 419 / 440,
-  /** Element's bottom edge, as a fraction of viewport height off the floor. */
   BOTTOM: 0.14,
-  /**
-   * Narrow screens sit the truck further up the road. Raising this pushes it
-   * away, which shrinks it to match — so the deck stops covering its wheels and
-   * there is some highway left to look at.
-   */
   BOTTOM_COMPACT: 0.26,
-  /** Must match the breakpoint in globals.css that swaps the two. */
   COMPACT_MAX_WIDTH: 720,
-  /** Ceiling on the rendered width, so a narrow screen is not all truck. The
-   *  stylesheet reads this back as --truck-max; keep them one value. */
   MAX_VIEWPORT_FRACTION: 0.78,
-  /** Corners of the painted rear face, in viewBox units. */
   BODY_LEFT: 24,
   BODY_CENTRE: 170,
   BODY_TOP: 80,
@@ -144,16 +101,6 @@ export const TRUCK = {
 
 const UNITS_PER_METRE = TRUCK.VIEWBOX_WIDTH / TRUCK.WIDTH_METRES;
 
-/**
- * How wide to draw the truck, as a fraction of viewport height, so its tyres
- * land exactly on the tarmac the canvas is painting.
- *
- * Width and distance depend on each other — a wider truck is a nearer truck,
- * and a nearer truck sits lower — so this solves the loop by iteration rather
- * than guessing a number that only looks right on one screen. It is a fraction
- * of *height* because the projection's focal length is, which is why the fit
- * holds on a phone and an ultrawide alike.
- */
 export function truckWidthRatio(bottom: number = TRUCK.BOTTOM): number {
   let ratio = 0.33;
   for (let i = 0; i < 12; i++) {
@@ -168,30 +115,20 @@ function distanceForRatio(ratio: number, bottom: number): number {
   return (HIGHWAY.CAMERA_HEIGHT * HIGHWAY.FOCAL) / (wheels - HIGHWAY.HORIZON);
 }
 
-/** Metres between the camera and the truck ahead. The plume lives in this gap. */
 export const TRUCK_DISTANCE = distanceForRatio(truckWidthRatio(), TRUCK.BOTTOM);
 export const TRUCK_DISTANCE_COMPACT = distanceForRatio(
   truckWidthRatio(TRUCK.BOTTOM_COMPACT),
   TRUCK.BOTTOM_COMPACT,
 );
 
-/**
- * How the world maps to the screen for one frame: the camera, plus the shape
- * of the road in front of it. Curve and hill live here rather than being
- * threaded through every call because every projection needs them.
- */
 export interface View {
   width: number;
   height: number;
   cx: number;
   horizon: number;
-  /** Focal length in pixels. */
   focal: number;
-  /** Metres of lateral sweep per (metre of depth)². */
   curve: number;
-  /** Metres of rise per (metre of depth)². */
   hill: number;
-  /** Where the camera sits across the road, in metres. Negative is left. */
   cameraX: number;
 }
 
@@ -208,12 +145,6 @@ export function makeView(width: number, height: number): View {
   };
 }
 
-/**
- * The flank only starts showing once the camera is further left than the
- * truck's own left edge — before that the side is hidden behind the rear face.
- * Returns 0–1 against the flank drawn for a full `DRIFT_METRES` pull-out, which
- * is exactly the horizontal scale that reveals it.
- */
 const FLANK_THRESHOLD_METRES = (TRUCK.BODY_CENTRE - TRUCK.BODY_LEFT) / UNITS_PER_METRE;
 
 export function flankOpen(cameraX: number): number {
@@ -221,27 +152,12 @@ export function flankOpen(cameraX: number): number {
   return clamp01((Math.abs(cameraX) - FLANK_THRESHOLD_METRES) / span);
 }
 
-/** Where lines along the truck's length converge, at a full pull-out. */
 const VANISH_X = TRUCK.BODY_CENTRE - HIGHWAY.DRIFT_METRES * UNITS_PER_METRE;
 const VANISH_Y = TRUCK.WHEEL_LINE * TRUCK.VIEWBOX_HEIGHT - HIGHWAY.CAMERA_HEIGHT * UNITS_PER_METRE;
 
-/** How much bodywork shrinks `t` of the way from the tailgate to the cab. */
 export const flankScale = (t: number) =>
   TRUCK_DISTANCE / (TRUCK_DISTANCE + TRUCK.BODY_LENGTH_METRES * t);
 
-/**
- * Takes a point on the rear face and slides it `t` of the way along the truck's
- * left side, in viewBox units.
- *
- * Every piece of the flank — panel, rail, tarp, wheels, ribs — is built from
- * this one function, which is what keeps them all agreeing on the same
- * vanishing point.
- *
- * The vertical result does not depend on how far the camera has pulled out;
- * only the horizontal one does, and linearly. That is the whole reason the
- * reveal can be a plain `scaleX` about the body's edge and still be exact at
- * every intermediate angle rather than an approximation.
- */
 export function flankPoint(x: number, y: number, t: number): [number, number] {
   const shrink = flankScale(t);
   return [VANISH_X + shrink * (x - VANISH_X), VANISH_Y + shrink * (y - VANISH_Y)];
@@ -1036,7 +952,8 @@ export function drawHighway(ctx: Ctx, state: HighwayState, view: View): void {
     (TRUCK.WIDTH_METRES * view.focal) / state.truckZ,
     TRUCK.MAX_VIEWPORT_FRACTION * view.width,
   );
-  const room = Math.max(0, (view.width - truckWidth) / 2 - HIGHWAY.DRIFT_EDGE_MARGIN);
+  const margin = Math.max(HIGHWAY.DRIFT_EDGE_MARGIN, view.width * HIGHWAY.DRIFT_EDGE_FRACTION);
+  const room = Math.max(0, (view.width - truckWidth) / 2 - margin);
   const reach = Math.min(HIGHWAY.DRIFT_METRES, (room * state.truckZ) / view.focal);
   view.cameraX = -state.drift * reach;
 

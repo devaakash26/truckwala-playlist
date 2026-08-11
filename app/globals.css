@@ -469,6 +469,12 @@ body {
   justify-content: space-between;
   gap: clamp(10px, 2vw, 20px);
   margin-top: 2px;
+  min-width: 0;
+}
+.deck-btn,
+.horn,
+.volume__toggle {
+  flex: none;
 }
 
 .lamp {
@@ -602,6 +608,7 @@ body {
   display: flex;
   align-items: center;
   gap: clamp(6px, 1.6vw, 14px);
+  flex: none;
 }
 .deck-btn {
   position: relative;
@@ -658,10 +665,15 @@ body {
   cursor: not-allowed;
 }
 
+/* The transport keeps its size; everything to its right gives way. That is what
+   stops the volume control being pushed past the edge at in-between widths,
+   without needing a breakpoint tuned for each device. */
 .deck__aux {
   display: flex;
   align-items: center;
   gap: clamp(10px, 1.8vw, 16px);
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 /* Sits apart from the transport row: it does nothing to the music, it just
@@ -703,6 +715,12 @@ body {
   align-items: center;
   gap: 10px;
   width: clamp(96px, 20vw, 168px);
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.volume__rail {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .volume__toggle {
   color: var(--ink-dim);
@@ -785,14 +803,19 @@ body {
     display: none;
   }
 
-  /* Must stay in step with TRUCK.COMPACT_MAX_WIDTH, which is what the canvas
-     uses to decide how far ahead the truck is. Further up the road means
-     smaller, which is the point: the deck stops sitting on its wheels. */
   .truck {
     bottom: var(--truck-bottom-compact);
   }
   .truck__svg {
     width: min(var(--truck-width-compact), var(--truck-max));
+  }
+
+  /* Tablets keep the buttons but lose the slider. */
+  .volume__rail {
+    display: none;
+  }
+  .volume {
+    width: auto;
   }
 }
 
@@ -804,11 +827,26 @@ body {
   .corner__label {
     display: none;
   }
-  .volume__rail {
+
+  /* Five transport buttons plus the horn and a volume control cannot fit a
+     phone — that is what was pushing the volume icon off the edge. So the deck
+     keeps the three controls that matter and the horn, and drops the rest: a
+     10-second skip is a desktop nicety, and every phone already has hardware
+     volume keys. */
+  .deck-btn--seek,
+  .volume {
     display: none;
   }
-  .volume {
-    width: auto;
+
+  /* One centred cluster with a single gap running through it, rather than a
+     group pinned left and the horn pinned right — that left a hole down the
+     middle and read as a mistake. */
+  .deck__row {
+    justify-content: center;
+    gap: 12px;
+  }
+  .transport {
+    gap: 12px;
   }
 
   /* Give the road back some room: the deck is the one element that can afford
@@ -957,6 +995,45 @@ input[type="range"]::-moz-range-thumb {
     font-size: 10px;
     padding: 7px 14px;
     letter-spacing: 0.1em;
+  }
+}
+
+/* The narrowest phones still in use. Nothing is dropped here that was not
+   already dropped above — this only tightens what is left so it never has to
+   reach for the edge. */
+@media (max-width: 380px) {
+  .deck {
+    gap: 10px;
+    padding: 10px 11px;
+  }
+  .disc {
+    width: 56px;
+  }
+  .deck__title {
+    font-size: 16px;
+  }
+  .deck__credits {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+  .deck__row,
+  .transport {
+    gap: 10px;
+  }
+  .hint {
+    font-size: 9px;
+    padding: 6px 11px;
+    letter-spacing: 0.06em;
+  }
+  .callsign {
+    gap: 7px;
+    padding: 6px 11px;
+  }
+  .callsign .brand {
+    font-size: 13px;
+  }
+  .clock {
+    font-size: 12px;
   }
 }
 
