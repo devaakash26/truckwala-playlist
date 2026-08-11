@@ -151,6 +151,11 @@ export const SCENE = {
 /** Who else is on the road right now, and what time it is where the songs are from. */
 export const LIVE = {
   ENDPOINT: "/api/live",
+  /**
+   * Added on top of the connections actually counted, so the station never
+   * reads as empty. Set to 0 to show only real listeners.
+   */
+  BASELINE: 20,
   /** Keeps proxies from culling an idle stream. */
   HEARTBEAT_MS: 25_000,
   RECONNECT_MS: 4000,

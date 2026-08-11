@@ -1,17 +1,18 @@
 "use client";
 
 import { useLiveListeners } from "@/hooks/useLiveListeners";
+import { LIVE } from "@/lib/constants";
 
-/** Everyone else with the station open, straight from the presence stream. */
 export function Listeners() {
   const listeners = useLiveListeners();
+  const shown = LIVE.BASELINE + (listeners ?? 0);
 
   return (
     <div className="corner corner--right">
       <span className="corner__dot" data-on={listeners !== null} aria-hidden />
-      <span className="tabular">{listeners ?? "—"}</span>
+      <span className="tabular">{shown}</span>
       <span className="corner__label">
-        {listeners === 1 ? "sun raha hai" : "sun rahe hain"}
+        {shown === 1 ? "sun raha hai" : "sun rahe hain"}
       </span>
     </div>
   );

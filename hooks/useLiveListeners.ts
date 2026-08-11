@@ -27,11 +27,9 @@ export function useLiveListeners(): number | null {
         try {
           const listeners = Number(JSON.parse(event.data).listeners);
           if (!Number.isFinite(listeners)) return;
-          // A frame got through, so whatever went wrong before is behind us.
           attempts = 0;
           setCount(listeners);
         } catch {
-          // A malformed frame is not worth tearing the stream down for.
         }
       };
 
