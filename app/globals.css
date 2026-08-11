@@ -254,7 +254,23 @@ body {
     radial-gradient(1.6px 1.6px at 76% 36%, #fff, transparent),
     radial-gradient(1.1px 1.1px at 47% 41%, #fff, transparent),
     radial-gradient(1.3px 1.3px at 19% 44%, #fff, transparent),
-    radial-gradient(1.2px 1.2px at 88% 45%, #fff, transparent);
+    radial-gradient(1.2px 1.2px at 88% 45%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 30% 22%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 52% 26%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 71% 8%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 96% 32%, #fff, transparent),
+    radial-gradient(1.3px 1.3px at 4% 19%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 39% 48%, #fff, transparent),
+    /* Milky way — last, so it washes in behind the stars rather than over
+       them. It is most of what stops a clear night sky reading as flat. */
+      linear-gradient(
+        102deg,
+        transparent 33%,
+        rgb(188 204 255 / 0.07) 43%,
+        rgb(214 224 255 / 0.13) 50%,
+        rgb(188 204 255 / 0.06) 57%,
+        transparent 67%
+      );
   animation: twinkle 6s ease-in-out infinite alternate;
 }
 
@@ -277,7 +293,7 @@ body {
    lateral sweep is a fraction of a millimetre. Only the distance behind it
    bends, which is exactly how it looks from a cab.) */
 .truck {
-  inset: auto 0 14% 0;
+  inset: auto 0 var(--truck-bottom) 0;
   display: flex;
   justify-content: center;
   transform: translateX(var(--truck-drift, 0px));
@@ -398,6 +414,7 @@ body {
 /* -------------------------------------------------------------------------- */
 
 .deck {
+  position: relative;
   width: min(760px, 100%);
   display: flex;
   align-items: center;
@@ -753,6 +770,16 @@ body {
   .callsign .freq::after {
     display: none;
   }
+
+  /* Must stay in step with TRUCK.COMPACT_MAX_WIDTH, which is what the canvas
+     uses to decide how far ahead the truck is. Further up the road means
+     smaller, which is the point: the deck stops sitting on its wheels. */
+  .truck {
+    bottom: var(--truck-bottom-compact);
+  }
+  .truck__svg {
+    width: min(var(--truck-width-compact), var(--truck-max));
+  }
 }
 
 @media (max-width: 560px) {
@@ -768,6 +795,49 @@ body {
   }
   .volume {
     width: auto;
+  }
+
+  /* Give the road back some room: the deck is the one element that can afford
+     to lose height here. */
+  .stage {
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .deck {
+    gap: 12px;
+    padding: 11px 13px;
+  }
+  .disc {
+    width: 66px;
+  }
+  .deck__title {
+    font-size: 18px;
+  }
+  .deck__body {
+    gap: 5px;
+  }
+  .transport {
+    gap: 5px;
+  }
+  .deck-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .deck-btn--primary {
+    width: 46px;
+    height: 46px;
+  }
+  .deck-btn--primary svg {
+    width: 19px;
+    height: 19px;
+  }
+  .horn {
+    width: 36px;
+    height: 36px;
+  }
+  .horn svg {
+    width: 17px;
+    height: 17px;
   }
 }
 
@@ -831,28 +901,41 @@ input[type="range"]::-moz-range-thumb {
 
 /* Not a gate. The station is already playing behind this — it is muted, and
    the next thing the visitor touches turns it up. */
+/* Anchored to the deck, which is the nearest positioned ancestor — so `100%`
+   here is the deck's own height and this lands just above it. */
 .hint {
   position: absolute;
-  bottom: calc(100% + 14px);
+  bottom: calc(100% + 12px);
   left: 50%;
   translate: -50% 0;
-  padding: 8px 16px;
-  border: 1px solid var(--panel-line);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 18px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
   border-radius: 999px;
-  background: var(--panel);
+  background: color-mix(in srgb, #0b0910 72%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  color: var(--ink-dim);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  color: var(--ink);
   font-size: 11px;
   letter-spacing: 0.14em;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.5s ease, translate 0.5s ease;
+  transition: opacity 0.5s ease;
 }
 .hint[data-open="true"] {
   opacity: 1;
   animation: hint-breathe 2.6s ease-in-out infinite;
+}
+.hint__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--glow);
 }
 
 /* -------------------------------------------------------------------------- */

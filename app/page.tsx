@@ -1,4 +1,3 @@
-import { AudioHint } from "@/components/AudioHint";
 import { IstClock } from "@/components/IstClock";
 import { Listeners } from "@/components/Listeners";
 import { StationBadge } from "@/components/StationBadge";
@@ -17,7 +16,6 @@ export default function Home() {
         <StationBadge />
         <Listeners />
         <main className="stage">
-          <AudioHint />
           <RadioConsole />
         </main>
         <IntroSequence />

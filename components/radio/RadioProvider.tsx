@@ -15,7 +15,13 @@ import {
 
 import { PLAYER, STORAGE_KEYS, TRACKS, YOUTUBE } from "@/lib/constants";
 import { clamp } from "@/lib/format";
-import type { PlaybackStatus, RadioActions, RadioState, Track } from "@/lib/types";
+import { introWillPlay } from "@/lib/intro";
+import type {
+  PlaybackStatus,
+  RadioActions,
+  RadioState,
+  Track,
+} from "@/lib/types";
 import {
   forceLowestQuality,
   loadYouTubeApi,
@@ -57,6 +63,7 @@ const INITIAL_STATE: RadioState = {
 type Action =
   | { type: "ready" }
   | { type: "unlock"; silent: boolean }
+  | { type: "silence" }
   | { type: "release" }
   | { type: "step"; delta: number }
   | { type: "playerState"; playerState: number; duration: number }
@@ -73,21 +80,36 @@ function reducer(state: RadioState, action: Action): RadioState {
     case "unlock":
       return state.unlocked
         ? state
-        : { ...state, unlocked: true, silenced: action.silent, status: "buffering" };
+        : {
+            ...state,
+            unlocked: true,
+            silenced: action.silent,
+            status: "buffering",
+          };
+
+    case "silence":
+      return state.silenced ? state : { ...state, silenced: true };
 
     case "release":
       return state.silenced ? { ...state, silenced: false } : state;
 
     case "step": {
-      const index = (state.index + action.delta + TRACKS.length) % TRACKS.length;
+      const index =
+        (state.index + action.delta + TRACKS.length) % TRACKS.length;
       // Stepping is always a user gesture, so it doubles as the autoplay unlock.
-      return { ...state, index, duration: 0, error: null, unlocked: true, status: "buffering" };
+      return {
+        ...state,
+        index,
+        duration: 0,
+        error: null,
+        unlocked: true,
+        status: "buffering",
+      };
     }
 
     case "playerState": {
       const status = STATUS_BY_PLAYER_STATE[action.playerState] ?? state.status;
       const duration = action.duration > 0 ? action.duration : state.duration;
-      // A frame of audio proves the track is fine — forgive the streak.
       const errorStreak = status === "playing" ? 0 : state.errorStreak;
       const error = status === "playing" ? null : state.error;
       return { ...state, status, duration, errorStreak, error };
@@ -108,7 +130,10 @@ function reducer(state: RadioState, action: Action): RadioState {
     }
 
     case "nudgeVolume":
-      return reducer(state, { type: "setVolume", volume: state.volume + action.delta });
+      return reducer(state, {
+        type: "setVolume",
+        volume: state.volume + action.delta,
+      });
 
     case "setMuted":
       return { ...state, muted: action.muted };
@@ -130,12 +155,15 @@ const ProgressContext = createContext(0);
 
 function useRequiredContext<T>(context: Context<T | null>, name: string): T {
   const value = useContext(context);
-  if (value === null) throw new Error(`${name} must be used inside <RadioProvider>`);
+  if (value === null)
+    throw new Error(`${name} must be used inside <RadioProvider>`);
   return value;
 }
 
-export const useRadioState = () => useRequiredContext(StateContext, "useRadioState");
-export const useRadioActions = () => useRequiredContext(ActionsContext, "useRadioActions");
+export const useRadioState = () =>
+  useRequiredContext(StateContext, "useRadioState");
+export const useRadioActions = () =>
+  useRequiredContext(ActionsContext, "useRadioActions");
 export const useRadioProgress = () => useContext(ProgressContext);
 
 export function useCurrentTrack(): Track {
@@ -186,29 +214,39 @@ export function RadioProvider({ children }: { children: ReactNode }) {
             onReady: (event) => {
               playerRef.current = event.target;
               dispatch({ type: "ready" });
-              // Mute *before* anything is asked to play. An autoplay attempt
-              // that is still unmuted gets refused outright and leaves the
-              // player sitting paused, rather than playing silently as
-              // intended — the volume effect runs a beat too late to prevent
-              // that on its own.
-              event.target.mute();
-              dispatch({ type: "unlock", silent: true });
+
+              // Ask for sound outright. Plenty of browsers grant it — Chrome
+              // once the visitor has listened here a few times, Safari and
+              // Firefox once the site is allowed — and when they do, the
+              // station simply starts, out loud, with nothing to press. The
+              // probe below notices if this was refused and drops to a silent
+              // start instead. Either way it must be decided *before* the load,
+              // because the mute state at that moment is what the policy judges.
+              const withFilm = introWillPlay();
+              if (withFilm) event.target.mute();
+              else event.target.unMute();
+              dispatch({ type: "unlock", silent: withFilm });
             },
             onStateChange: (event) => {
-              if (event.data === PLAYER_STATE.PLAYING) forceLowestQuality(event.target);
+              if (event.data === PLAYER_STATE.PLAYING)
+                forceLowestQuality(event.target);
               dispatch({
                 type: "playerState",
                 playerState: event.data,
                 duration: event.target.getDuration(),
               });
-              if (event.data === PLAYER_STATE.ENDED) dispatch({ type: "step", delta: 1 });
+              if (event.data === PLAYER_STATE.ENDED)
+                dispatch({ type: "step", delta: 1 });
             },
             // YouTube silently re-ladders on network changes; pull it back down.
-            onPlaybackQualityChange: (event) => forceLowestQuality(event.target),
+            onPlaybackQualityChange: (event) =>
+              forceLowestQuality(event.target),
             onError: (event) =>
               dispatch({
                 type: "error",
-                message: PLAYER_ERROR_MESSAGES[event.data] ?? `Playback error ${event.data}`,
+                message:
+                  PLAYER_ERROR_MESSAGES[event.data] ??
+                  `Playback error ${event.data}`,
               }),
           },
         });
@@ -239,7 +277,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     const track = TRACKS[state.index];
     const videoId = parseVideoId(track.source);
     if (!videoId) {
-      dispatch({ type: "error", message: `“${track.title}” has an unreadable YouTube link` });
+      dispatch({
+        type: "error",
+        message: `“${track.title}” has an unreadable YouTube link`,
+      });
       return;
     }
 
@@ -251,13 +292,19 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     // inside the user-gesture window.
     if (state.unlocked) player.loadVideoById({ videoId, startSeconds });
     else player.cueVideoById({ videoId, startSeconds });
-  }, [state.index, state.ready, state.unlocked, state.silenced]);
+    // `silenced` is deliberately not a dependency: it is set in the same
+    // reducer action as `unlocked`, so it is already true the one time this
+    // effect needs it. Listing it would reload the video the instant the sound
+    // is turned on, stalling playback right at the moment you start listening.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.index, state.ready, state.unlocked]);
 
   /* --- volume ------------------------------------------------------------ */
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEYS.VOLUME);
-    if (stored !== null) dispatch({ type: "setVolume", volume: Number(stored) });
+    if (stored !== null)
+      dispatch({ type: "setVolume", volume: Number(stored) });
     if (window.localStorage.getItem(STORAGE_KEYS.MUTED) === "true") {
       dispatch({ type: "setMuted", muted: true });
     }
@@ -311,6 +358,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   // the horn can never restart something the listener just stopped.
   const duckTimer = useRef(0);
   const ducking = useRef(false);
+  /** When the sound was turned on, or 0 while it is still silent. */
+  const releasedAt = useRef(0);
   const cancelDuck = useCallback(() => {
     window.clearTimeout(duckTimer.current);
     ducking.current = false;
@@ -331,16 +380,24 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       unlock: (silent = false) => dispatch({ type: "unlock", silent }),
 
       release: () => {
-        if (!stateRef.current.silenced) return;
+        // Guarded by a ref rather than by state: this runs inside a raw DOM
+        // event, and state has not necessarily caught up yet. A ref is set the
+        // instant it is read, so the timed cue and a click can race safely.
+        if (releasedAt.current !== 0) return;
+        releasedAt.current = performance.now();
+
         dispatch({ type: "release" });
         const player = playerRef.current;
         if (!player) return;
-        // The track has been running under the film; rewind so the listener
+
+        if (!stateRef.current.muted) player.unMute();
+        // It has been running silently under the film; rewind so the listener
         // actually hears it from the top.
         const start = TRACKS[stateRef.current.index].startAt ?? 0;
         player.seekTo(start, true);
         setProgress(start);
-        if (player.getPlayerState() !== PLAYER_STATE.PLAYING) player.playVideo();
+        if (player.getPlayerState() !== PLAYER_STATE.PLAYING)
+          player.playVideo();
       },
 
       duck: (seconds: number) => {
@@ -364,9 +421,17 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         cancelDuck();
         const player = playerRef.current;
         if (!player) return;
+        // Pressing play is also the gesture that woke the audio, and the
+        // pointerdown that did so fires first. Without this the very same press
+        // would un-mute the station and then immediately pause it again.
+        if (performance.now() - releasedAt.current < PLAYER.WAKE_GRACE_MS)
+          return;
         const playerState = player.getPlayerState();
         // Still cued means the gate was never opened; unlocking loads and plays.
-        if (playerState === PLAYER_STATE.CUED || playerState === PLAYER_STATE.UNSTARTED) {
+        if (
+          playerState === PLAYER_STATE.CUED ||
+          playerState === PLAYER_STATE.UNSTARTED
+        ) {
           dispatch({ type: "unlock", silent: false });
         } else if (
           playerState === PLAYER_STATE.PLAYING ||
@@ -387,7 +452,11 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         cancelDuck();
         const player = playerRef.current;
         // Same as an FM deck: a late ⏮ restarts the track, an early one goes back.
-        if (player && player.getCurrentTime() > PLAYER.RESTART_THRESHOLD_SECONDS) seekTo(0);
+        if (
+          player &&
+          player.getCurrentTime() > PLAYER.RESTART_THRESHOLD_SECONDS
+        )
+          seekTo(0);
         else dispatch({ type: "step", delta: -1 });
       },
 
@@ -402,34 +471,64 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
       nudgeVolume: (delta: number) => dispatch({ type: "nudgeVolume", delta }),
 
-      toggleMute: () => dispatch({ type: "setMuted", muted: !stateRef.current.muted }),
+      toggleMute: () =>
+        dispatch({ type: "setMuted", muted: !stateRef.current.muted }),
     }),
     [seekTo, cancelDuck],
   );
 
   /* --- turning the sound on ---------------------------------------------- */
 
+  /**
+   * Did the out-loud start actually take?
+   *
+   * `playVideo()` reports nothing back, so this reads the player a moment
+   * later. Buffering counts as well as playing — both mean permission was
+   * granted — but only if the player is still un-muted, because a blocked
+   * embed will sometimes mute itself and carry on rather than stopping.
+   */
   useEffect(() => {
-    const wake = () => {
+    if (!state.ready || !state.unlocked || state.silenced) return;
+
+    const id = window.setTimeout(() => {
       const player = playerRef.current;
       if (!player) return;
 
-      actions.release();
-      if (!stateRef.current.muted) player.unMute();
-      // A browser can refuse the first attempt if it does not count that
-      // interaction as activation, so stay attached until it actually sticks.
-      if (!player.isMuted()) detach();
-    };
+      const running =
+        player.getPlayerState() === PLAYER_STATE.PLAYING ||
+        player.getPlayerState() === PLAYER_STATE.BUFFERING;
+      if (running && !player.isMuted()) return;
 
-    const detach = () => {
-      for (const type of WAKE_EVENTS) window.removeEventListener(type, wake);
+      // Refused. Fall back to a silent start, which is never refused, and let
+      // the wake listener below hand the sound over on the first touch.
+      player.mute();
+      player.playVideo();
+      dispatch({ type: "silence" });
+    }, PLAYER.AUTOPLAY_PROBE_MS);
+
+    return () => window.clearTimeout(id);
+  }, [state.ready, state.unlocked, state.silenced]);
+
+  // Bound only while the station is still silent, and torn down by that flag
+  // flipping rather than by the handler deciding it is finished. An earlier
+  // version detached itself the moment `isMuted()` read false, which could
+  // happen on a press that landed before `silenced` had even been committed —
+  // the listener went away, the mute was then re-applied, and the station
+  // stayed silent with nothing left to wake it.
+  useEffect(() => {
+    if (!state.silenced) return;
+
+    const wake = () => {
+      if (playerRef.current) actions.release();
     };
 
     for (const type of WAKE_EVENTS) {
       window.addEventListener(type, wake, { passive: true });
     }
-    return detach;
-  }, [actions]);
+    return () => {
+      for (const type of WAKE_EVENTS) window.removeEventListener(type, wake);
+    };
+  }, [state.silenced, actions]);
 
   return (
     <ActionsContext.Provider value={actions}>
@@ -442,7 +541,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
             ref={hostRef}
             aria-hidden
             className="yt-host"
-            style={{ width: YOUTUBE.PLAYER_WIDTH, height: YOUTUBE.PLAYER_HEIGHT }}
+            style={{
+              width: YOUTUBE.PLAYER_WIDTH,
+              height: YOUTUBE.PLAYER_HEIGHT,
+            }}
           />
         </ProgressContext.Provider>
       </StateContext.Provider>

@@ -124,6 +124,14 @@ export const TRUCK = {
   WHEEL_LINE: 419 / 440,
   /** Element's bottom edge, as a fraction of viewport height off the floor. */
   BOTTOM: 0.14,
+  /**
+   * Narrow screens sit the truck further up the road. Raising this pushes it
+   * away, which shrinks it to match — so the deck stops covering its wheels and
+   * there is some highway left to look at.
+   */
+  BOTTOM_COMPACT: 0.26,
+  /** Must match the breakpoint in globals.css that swaps the two. */
+  COMPACT_MAX_WIDTH: 720,
   /** Ceiling on the rendered width, so a narrow screen is not all truck. The
    *  stylesheet reads this back as --truck-max; keep them one value. */
   MAX_VIEWPORT_FRACTION: 0.78,
@@ -146,22 +154,26 @@ const UNITS_PER_METRE = TRUCK.VIEWBOX_WIDTH / TRUCK.WIDTH_METRES;
  * of *height* because the projection's focal length is, which is why the fit
  * holds on a phone and an ultrawide alike.
  */
-export function truckWidthRatio(): number {
+export function truckWidthRatio(bottom: number = TRUCK.BOTTOM): number {
   let ratio = 0.33;
   for (let i = 0; i < 12; i++) {
-    ratio = (TRUCK.WIDTH_METRES * HIGHWAY.FOCAL) / distanceForRatio(ratio);
+    ratio = (TRUCK.WIDTH_METRES * HIGHWAY.FOCAL) / distanceForRatio(ratio, bottom);
   }
   return ratio;
 }
 
-function distanceForRatio(ratio: number): number {
+function distanceForRatio(ratio: number, bottom: number): number {
   const height = ratio * TRUCK.ASPECT;
-  const wheels = 1 - TRUCK.BOTTOM - height * (1 - TRUCK.WHEEL_LINE);
+  const wheels = 1 - bottom - height * (1 - TRUCK.WHEEL_LINE);
   return (HIGHWAY.CAMERA_HEIGHT * HIGHWAY.FOCAL) / (wheels - HIGHWAY.HORIZON);
 }
 
 /** Metres between the camera and the truck ahead. The plume lives in this gap. */
-export const TRUCK_DISTANCE = distanceForRatio(truckWidthRatio());
+export const TRUCK_DISTANCE = distanceForRatio(truckWidthRatio(), TRUCK.BOTTOM);
+export const TRUCK_DISTANCE_COMPACT = distanceForRatio(
+  truckWidthRatio(TRUCK.BOTTOM_COMPACT),
+  TRUCK.BOTTOM_COMPACT,
+);
 
 /**
  * How the world maps to the screen for one frame: the camera, plus the shape
@@ -263,11 +275,14 @@ export const roadRise = (hill: number, z: number) => hill * depth2(z);
 /* State                                                                       */
 /* -------------------------------------------------------------------------- */
 
-type PropKind = "tree" | "bush" | "milestone" | "board";
+type PropKind = "tree" | "slim" | "bush" | "milestone" | "board";
 
+/** One silhouette repeated down the whole road reads as wallpaper, so the
+ *  broad neem shape is mixed with a tall thin one. */
 const PROP_WEIGHTS: ReadonlyArray<[PropKind, number]> = [
-  ["tree", 0.46],
-  ["bush", 0.32],
+  ["tree", 0.34],
+  ["slim", 0.16],
+  ["bush", 0.28],
   ["milestone", 0.14],
   ["board", 0.08],
 ];
@@ -329,6 +344,8 @@ export interface HighwayState {
   /** 0 tucked in behind, 1 fully alongside. Metres are applied at draw time,
    *  because how far we can pull out depends on the frame. */
   drift: number;
+  /** How far ahead the truck is. Frame-dependent, so the draw pass sets it. */
+  truckZ: number;
   /** Distance until the next overpass. */
   nextBridge: number;
   bridges: number[];
@@ -375,8 +392,8 @@ function seedMote(mote: Mote, z: number): void {
 }
 
 /** Plume motes are born under the truck's wheels and blow back at us. */
-function seedPlume(mote: Mote): void {
-  mote.z = TRUCK_DISTANCE - between(0, 0.8);
+function seedPlume(mote: Mote, truckZ: number): void {
+  mote.z = truckZ - between(0, 0.8);
   mote.x = between(-TRUCK.WIDTH_METRES / 2, TRUCK.WIDTH_METRES / 2);
   mote.y = between(0, 0.3);
   mote.size = between(0.12, 0.5);
@@ -424,7 +441,7 @@ export function createHighway(phase: PhaseId): HighwayState {
 
   const plume = Array.from({ length: HIGHWAY.PLUME_COUNT }, () => {
     const mote = {} as Mote;
-    seedPlume(mote);
+    seedPlume(mote, TRUCK_DISTANCE);
     mote.z = between(HIGHWAY.NEAR_Z, TRUCK_DISTANCE);
     return mote;
   });
@@ -441,6 +458,7 @@ export function createHighway(phase: PhaseId): HighwayState {
     hill: 0,
     driftClock: 0,
     drift: 0,
+    truckZ: TRUCK_DISTANCE,
     nextBridge: between(HIGHWAY.BRIDGE_MIN_GAP, HIGHWAY.BRIDGE_MAX_GAP),
     bridges: [],
     ridgeOffset: 0,
@@ -538,7 +556,7 @@ export function stepHighway(state: HighwayState, dt: number, phase: PhaseId): vo
     mote.z -= advance * 0.22;
     mote.y += HIGHWAY.PLUME_RISE * dt;
     mote.size += dt * 0.55;
-    if (mote.z < HIGHWAY.NEAR_Z) seedPlume(mote);
+    if (mote.z < HIGHWAY.NEAR_Z) seedPlume(mote, state.truckZ);
   }
 
   for (const patch of state.patches) {
@@ -854,9 +872,24 @@ function drawProp(ctx: Ctx, state: HighwayState, view: View, prop: Prop) {
       ctx.fill();
       break;
     }
-    case "bush": {
+    case "slim": {
+      // Eucalyptus: a bare trunk with the canopy right at the top.
+      const height = 9.5 * k * s;
+      ctx.fillRect(x - 0.13 * k * s, y - height, 0.26 * k * s, height);
+      const crown = y - height * 0.86;
       ctx.beginPath();
-      ctx.ellipse(x, y - 0.35 * k * s, 1.1 * k * s, 0.6 * k * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, crown, 0.85 * k * s, 1.9 * k * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case "bush": {
+      // Three lumps sitting on the ground. A single flat ellipse read as a
+      // puddle rather than as scrub.
+      const radius = 0.62 * k * s;
+      ctx.beginPath();
+      ctx.arc(x, y - radius * 0.8, radius, 0, Math.PI * 2);
+      ctx.arc(x - radius * 1.1, y - radius * 0.5, radius * 0.75, 0, Math.PI * 2);
+      ctx.arc(x + radius * 1.05, y - radius * 0.45, radius * 0.7, 0, Math.PI * 2);
       ctx.fill();
       break;
     }
@@ -945,14 +978,14 @@ function drawTraffic(ctx: Ctx, state: HighwayState, view: View) {
 /** Dust off the truck's wheels — born under it, blown back past the camera. */
 function drawPlume(ctx: Ctx, state: HighwayState, view: View) {
   const p = state.palette;
-  const span = TRUCK_DISTANCE - HIGHWAY.NEAR_Z;
+  const span = state.truckZ - HIGHWAY.NEAR_Z;
   ctx.fillStyle = rgba(p.dust);
   for (const mote of state.plume) {
     const scale = scaleAt(view, mote.z);
     const radius = mote.size * scale;
     if (radius < 0.5) continue;
     // Swells behind the truck, thins out again as it reaches us.
-    const life = clamp01((TRUCK_DISTANCE - mote.z) / span);
+    const life = clamp01((state.truckZ - mote.z) / span);
     ctx.globalAlpha = p.dustOpacity * 0.85 * Math.sin(Math.PI * life);
     ctx.beginPath();
     ctx.arc(
@@ -974,7 +1007,10 @@ function drawDust(ctx: Ctx, state: HighwayState, view: View) {
     const s = scaleAt(view, mote.z);
     const radius = mote.size * s;
     if (radius < 0.35) continue;
-    ctx.globalAlpha = p.dustOpacity * (1 - mote.z / HIGHWAY.FAR_Z);
+    // Big motes get thinner. Equal alpha at every size turned these into a row
+    // of grey discs instead of haze.
+    const body = 0.3 + 0.7 * (1 - mote.size / 0.3);
+    ctx.globalAlpha = p.dustOpacity * body * (1 - mote.z / HIGHWAY.FAR_Z);
     ctx.beginPath();
     ctx.arc(projectX(view, mote.x, mote.z), projectY(view, mote.z) - mote.y * s, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -994,12 +1030,14 @@ export function drawHighway(ctx: Ctx, state: HighwayState, view: View): void {
   // leaves almost no room, so the overtake becomes a gentle parallax and the
   // flank never comes into view — which is exactly what being tucked in behind
   // a truck looks like.
+  state.truckZ =
+    view.width <= TRUCK.COMPACT_MAX_WIDTH ? TRUCK_DISTANCE_COMPACT : TRUCK_DISTANCE;
   const truckWidth = Math.min(
-    (TRUCK.WIDTH_METRES * view.focal) / TRUCK_DISTANCE,
+    (TRUCK.WIDTH_METRES * view.focal) / state.truckZ,
     TRUCK.MAX_VIEWPORT_FRACTION * view.width,
   );
   const room = Math.max(0, (view.width - truckWidth) / 2 - HIGHWAY.DRIFT_EDGE_MARGIN);
-  const reach = Math.min(HIGHWAY.DRIFT_METRES, (room * TRUCK_DISTANCE) / view.focal);
+  const reach = Math.min(HIGHWAY.DRIFT_METRES, (room * state.truckZ) / view.focal);
   view.cameraX = -state.drift * reach;
 
   ctx.clearRect(0, 0, view.width, view.height);

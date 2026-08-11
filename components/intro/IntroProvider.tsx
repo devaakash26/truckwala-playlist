@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { INTRO } from "@/lib/constants";
+import { introWillPlay } from "@/lib/intro";
 import { useRadioActions, useRadioState } from "@/components/radio/RadioProvider";
 
 export type IntroStatus = "idle" | "playing" | "done";
@@ -37,16 +38,7 @@ export function IntroProvider({ children }: { children: ReactNode }) {
   // Decided once, on the client. Safe to settle during render because `ready`
   // is false until the YouTube API has loaded, so the server and the first
   // hydration both render "idle" regardless of what this comes out as.
-  const [enabled] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return (
-      INTRO.SHOTS.length > 0 &&
-      window.sessionStorage.getItem(INTRO.SESSION_KEY) === null &&
-      // A three-shot film is exactly what someone asking for less motion does
-      // not want between them and the music.
-      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    );
-  });
+  const [enabled] = useState(introWillPlay);
 
   const status: IntroStatus = finished ? "done" : !ready ? "idle" : enabled ? "playing" : "done";
 

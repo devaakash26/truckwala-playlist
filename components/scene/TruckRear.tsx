@@ -4,10 +4,25 @@ import { SHAYARI, TAILGATE } from "@/lib/constants";
 import { flankPoint, flankScale, truckWidthRatio, TRUCK } from "@/lib/highway";
 import { useRadioState } from "@/components/radio/RadioProvider";
 
-/** Solved once from the camera constants — see truckWidthRatio. */
+/**
+ * Solved once from the camera constants — see truckWidthRatio. Two sizes: a
+ * narrow screen parks the truck further up the road, and the width has to
+ * follow the distance or it stops sitting on the tarmac.
+ */
 const WIDTH = `${(truckWidthRatio() * 100).toFixed(2)}dvh`;
+const WIDTH_COMPACT = `${(truckWidthRatio(TRUCK.BOTTOM_COMPACT) * 100).toFixed(2)}dvh`;
+const BOTTOM = `${(TRUCK.BOTTOM * 100).toFixed(2)}%`;
+const BOTTOM_COMPACT = `${(TRUCK.BOTTOM_COMPACT * 100).toFixed(2)}%`;
 /** Handed to CSS so the canvas and the stylesheet cap the width identically. */
 const MAX_WIDTH = `${TRUCK.MAX_VIEWPORT_FRACTION * 100}vw`;
+
+const LAYOUT = {
+  "--truck-width": WIDTH,
+  "--truck-width-compact": WIDTH_COMPACT,
+  "--truck-bottom": BOTTOM,
+  "--truck-bottom-compact": BOTTOM_COMPACT,
+  "--truck-max": MAX_WIDTH,
+} as React.CSSProperties;
 
 /* --- painted tailgate line ------------------------------------------------ */
 
@@ -43,26 +58,58 @@ function fit(lines: readonly string[], room: number, cap: number): number {
  * gold rail, the chassis and the wheels all keep going past the tailgate.
  */
 const SIDE = {
-  TARP_TOP: 44,
   RAIL_TOP: 62,
   RAIL_BOTTOM: 84,
   PANEL_BOTTOM: 304,
-  CHASSIS_BOTTOM: 318,
-  WHEEL_Y: 390,
-  SHADOW_TOP: 402,
-  SHADOW_BOTTOM: 426,
+  /** Frame, tank and toolbox. Deep enough that the wheels tuck under it rather
+   *  than hanging in mid-air, which was what made the side read as a cut-out. */
+  CHASSIS_BOTTOM: 356,
+  TANK_TOP: 312,
+  TANK_BOTTOM: 348,
+  WHEEL_Y: 384,
+  WHEEL_R: 28,
+  SHADOW_TOP: 398,
+  SHADOW_BOTTOM: 424,
 } as const;
 
 /** Rear bogie sits close to the tailgate; the third axle is under the cab. */
 const AXLES = [0.085, 0.225, 0.84];
 const RIBS = [0.18, 0.36, 0.54, 0.72];
+const TANK = [0.34, 0.56] as const;
+const ROPES = [0.28, 0.56, 0.84];
+
+/**
+ * The tarpaulin's silhouette across the back, sampled off the same curve the
+ * rear face draws. Swept forward it becomes the top of the load — without it
+ * the cargo reads as a flat wall rather than something rounded and roped down.
+ */
+const DOME = [
+  [24, 72],
+  [45, 44],
+  [82, 25.5],
+  [126, 15],
+  [170, 12],
+] as const;
 
 const EDGE = TRUCK.BODY_LEFT;
 const corner = (y: number, t: number) => flankPoint(EDGE, y, t).join(",");
 
 /** A band running the full length of the truck, between two heights. */
-const strip = (top: number, bottom: number) =>
-  `${corner(top, 0)} ${corner(top, 1)} ${corner(bottom, 1)} ${corner(bottom, 0)}`;
+const strip = (top: number, bottom: number, from = 0, to = 1) =>
+  `${corner(top, from)} ${corner(top, to)} ${corner(bottom, to)} ${corner(bottom, from)}`;
+
+/** Traces a profile across the back, then back along the same profile at the
+ *  front — the surface swept between them. */
+const sweep = (profile: readonly (readonly number[])[]) =>
+  [
+    ...profile.map(([x, y]) => flankPoint(x, y, 0)),
+    ...[...profile].reverse().map(([x, y]) => flankPoint(x, y, 1)),
+  ]
+    .map((point) => point.join(","))
+    .join(" ");
+
+const trace = (profile: readonly (readonly number[])[], t: number) =>
+  profile.map(([x, y]) => flankPoint(x, y, t).join(",")).join(" ");
 
 const PANEL_POINTS = strip(SIDE.RAIL_BOTTOM, SIDE.PANEL_BOTTOM);
 
@@ -85,7 +132,9 @@ const BULB_END = 306;
 const CHAIN_X = [118, 144, 170, 196, 222];
 const CHAIN_LINKS = 4;
 
-const PLATE_TEXT = "HR 38 C 1947";
+const PLATE_TEXT = "UP 15 BB 4141";
+/** Centres of the two rear tyres, in viewBox units. */
+const REAR_AXLE = [72, 268];
 
 function Chain({ x, index }: { x: number; index: number }) {
   return (
@@ -130,7 +179,7 @@ export function TruckRear({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
       className="truck"
       aria-hidden
       ref={ref}
-      style={{ "--truck-width": WIDTH, "--truck-max": MAX_WIDTH } as React.CSSProperties}
+      style={LAYOUT}
     >
       <svg className="truck__svg" viewBox="0 0 340 440" role="presentation">
         <defs>
@@ -170,9 +219,19 @@ export function TruckRear({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
         <ellipse className="truck__shadow" cx="170" cy="420" rx="146" ry="15" filter="url(#tw-blur)" />
 
         <g className="truck__art">
-          {/* Rear axle, mostly hidden behind the flaps. */}
-          <ellipse cx="74" cy="392" rx="33" ry="27" fill="#121218" />
-          <ellipse cx="266" cy="392" rx="33" ry="27" fill="#121218" />
+          {/* Rear duals. From directly behind you are looking at the tread
+              face, not at the wheel — so this is a squared-off block with a
+              flat contact patch, and there is no rim or hub in view. An ellipse
+              here read as an egg, which is what it was. */}
+          {REAR_AXLE.map((cx) => (
+            <g key={cx}>
+              <rect x={cx - 33} y="356" width="66" height="66" rx="17" fill="#0c0c11" />
+              {/* Shoulder, clear of the bumper that crosses in front. */}
+              <rect x={cx - 30} y="364" width="60" height="9" rx="4.5" fill="#1e1e26" />
+              {/* Seam between the two tyres of the pair. */}
+              <rect x={cx - 2.5} y="366" width="5" height="52" rx="2.5" fill="#000" opacity="0.5" />
+            </g>
+          ))}
 
           {/* The left flank. Drawn at full pull-out and revealed by scaling it
               horizontally about the body's edge — see flankGeometry for why
@@ -182,18 +241,33 @@ export function TruckRear({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
             <polygon
               points={strip(SIDE.SHADOW_TOP, SIDE.SHADOW_BOTTOM)}
               fill="#000"
-              opacity="0.4"
+              opacity="0.26"
             />
 
             {AXLES.map((t) => {
               const [cx, cy] = flankPoint(EDGE, SIDE.WHEEL_Y, t);
               const size = flankScale(t);
               return (
-                <ellipse key={t} cx={cx} cy={cy} rx={30 * size} ry={27 * size} fill="#0e0e13" />
+                <g key={t}>
+                  <ellipse
+                    cx={cx}
+                    cy={cy}
+                    rx={SIDE.WHEEL_R * 1.08 * size}
+                    ry={SIDE.WHEEL_R * size}
+                    fill="#0e0e13"
+                  />
+                  {/* Rim and hub, so a wheel is not just a hole in the art. */}
+                  <ellipse cx={cx} cy={cy} rx={14 * size} ry={13 * size} fill="#26262f" />
+                  <ellipse cx={cx} cy={cy} rx={6 * size} ry={5.5 * size} fill="#3d3d48" />
+                </g>
               );
             })}
 
-            <polygon points={strip(SIDE.PANEL_BOTTOM, SIDE.CHASSIS_BOTTOM)} fill="#1d1d24" />
+            <polygon points={strip(SIDE.PANEL_BOTTOM, SIDE.CHASSIS_BOTTOM)} fill="#191920" />
+            <polygon
+              points={strip(SIDE.TANK_TOP, SIDE.TANK_BOTTOM, TANK[0], TANK[1])}
+              fill="#4a4a55"
+            />
             <polygon points={PANEL_POINTS} fill="url(#tw-flank)" />
 
             {/* Panel joins, converging with everything else. */}
@@ -209,8 +283,20 @@ export function TruckRear({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
               ))}
             </g>
 
+            {/* Top of the load, swept forward from the tailgate's own curve. */}
+            <polygon points={sweep(DOME)} fill="#2b364d" />
+            {ROPES.map((t) => (
+              <polyline
+                key={t}
+                points={trace(DOME, t)}
+                fill="none"
+                stroke="#c9b07a"
+                strokeWidth={1.6 * flankScale(t)}
+                opacity="0.38"
+              />
+            ))}
+
             <polygon points={strip(SIDE.RAIL_TOP, SIDE.RAIL_BOTTOM)} fill="#a97c1f" />
-            <polygon points={strip(SIDE.TARP_TOP, SIDE.RAIL_TOP)} fill="#222b3d" />
 
             <g clipPath="url(#tw-flank-clip)">
               <g
@@ -323,12 +409,24 @@ export function TruckRear({ ref }: { ref?: React.Ref<HTMLDivElement> }) {
             <Chain key={x} x={x} index={index} />
           ))}
 
-          <rect x="42" y="362" width="62" height="48" rx="3" fill="#17171d" />
-          <rect x="236" y="362" width="62" height="48" rx="3" fill="#17171d" />
-          <g fill="#d9a32a" opacity="0.7">
-            <circle cx="73" cy="386" r="9" />
-            <circle cx="267" cy="386" r="9" />
-          </g>
+          {/* Flaps hang in front of the tyres, so they have to be visibly
+              lighter than one. Matching the rubber made the two merge into a
+              single dark blob with a gold dot floating on it. */}
+          {REAR_AXLE.map((cx) => (
+            <g key={cx}>
+              <rect x={cx - 17} y="370" width="34" height="50" rx="4" fill="#2b2b34" />
+              <rect x={cx - 17} y="370" width="34" height="50" rx="4" fill="none" stroke="#3d3d48" />
+              <circle
+                cx={cx}
+                cy="394"
+                r="9"
+                fill="none"
+                stroke="#d9a32a"
+                strokeWidth="2.4"
+                opacity="0.75"
+              />
+            </g>
+          ))}
         </g>
 
         {/* Everything that emits light. Kept out of the art group so the phase

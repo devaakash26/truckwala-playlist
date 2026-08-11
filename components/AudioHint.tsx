@@ -29,7 +29,8 @@ export function AudioHint() {
 
   return (
     <p className="hint" data-open={showing} aria-live="polite">
-      Kahin bhi click karo — awaaz chalu
+      <span className="hint__dot" aria-hidden />
+      Gaana chal raha hai — kahin bhi click karo, awaaz aa jayegi
     </p>
   );
 }

@@ -99,6 +99,15 @@ export const PLAYER = {
   ERROR_SKIP_DELAY_MS: 1500,
   /** One turn of the disc. */
   DISC_SPIN_SECONDS: 7,
+  /** Window after the sound is turned on in which a press is treated as the
+   *  waking gesture rather than as a transport command. */
+  WAKE_GRACE_MS: 320,
+  /**
+   * How long to let an out-loud autoplay attempt prove itself before falling
+   * back to a silent start. Long enough for a slow connection to at least reach
+   * buffering, short enough that nobody sits in silence wondering.
+   */
+  AUTOPLAY_PROBE_MS: 1400,
 } as const;
 
 export const YOUTUBE = {
