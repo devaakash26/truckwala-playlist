@@ -3,7 +3,12 @@
 import { useEffect } from "react";
 
 import { PLAYER, STATION } from "@/lib/constants";
-import { useCurrentTrack, useRadioActions, useRadioState } from "@/components/radio/RadioProvider";
+import {
+  useCurrentStation,
+  useCurrentTrack,
+  useRadioActions,
+  useRadioState,
+} from "@/components/radio/RadioProvider";
 
 /**
  * Publishes the station to the OS — lock screen, media keys, the macOS Now
@@ -18,15 +23,21 @@ export function useMediaSession(): void {
   const { status } = useRadioState();
   const actions = useRadioActions();
   const track = useCurrentTrack();
+  const station = useCurrentStation();
 
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
+    // Assembled from what the track actually carries. Not every song has a film
+    // or a year, and interpolating the ones that do not puts the word
+    // "undefined" on the lock screen.
+    const source = [track.film, track.year].filter(Boolean).join(" · ");
+    const callsign = `${STATION.NAME} ${STATION.SUFFIX} ${station.frequency}`;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: track.title,
-      artist: track.artist,
-      album: `${track.film} · ${track.year} — ${STATION.NAME} ${STATION.SUFFIX}`,
+      artist: track.artist ?? "",
+      album: source ? `${source} — ${callsign}` : callsign,
     });
-  }, [track]);
+  }, [track, station]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;

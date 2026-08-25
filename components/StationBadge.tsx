@@ -3,12 +3,16 @@
 import { useTimeOfDay } from "@/hooks/useTimeOfDay";
 import { STATION } from "@/lib/constants";
 import { getPhase } from "@/lib/phase";
-import { useRadioState } from "@/components/radio/RadioProvider";
+import {
+  useCurrentStation,
+  useRadioState,
+} from "@/components/radio/RadioProvider";
 
 /** Callsign, frequency and the hour of the day, the way a dial would show it. */
 export function StationBadge() {
   const phaseId = useTimeOfDay();
   const { status } = useRadioState();
+  const station = useCurrentStation();
 
   return (
     <header className="callsign">
@@ -20,7 +24,7 @@ export function StationBadge() {
         {STATION.NAME}
         <em>{STATION.SUFFIX}</em>
       </span>
-      <span className="freq tabular">{STATION.FREQUENCY}</span>
+      <span className="freq tabular">{station.frequency}</span>
       {/* Blank until the client has read its own clock — see useTimeOfDay. */}
       <span className="badge">{phaseId ? getPhase(phaseId).label : "—"}</span>
     </header>
