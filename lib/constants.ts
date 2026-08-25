@@ -1,4 +1,4 @@
-import type { Phase, Track } from "@/lib/types";
+import type { Phase, Station, Track } from "@/lib/types";
 
 export const STATION = {
   NAME: "TRUCKWALA",
@@ -50,7 +50,7 @@ export const PHASES: readonly Phase[] = [
 
 export const DEFAULT_PHASE_ID = PHASES[PHASES.length - 1].id;
 
-export const TRACKS: readonly Track[] = [
+const HINDI_TRACKS: readonly Track[] = [
   {
     id: "tumsa-koi-pyaara",
     title: "Tumsa Koi Pyaara",
@@ -422,6 +422,662 @@ export const TRACKS: readonly Track[] = [
   },
 ];
 
+/* -------------------------------------------------------------------------- */
+/* The Punjabi band                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Grouped by singer below, and deliberately not played that way — see `deal`.
+ * `film` and `year` appear only where the label's own upload states them; on a
+ * playlist this old, a missing credit beats a confident wrong one.
+ */
+
+/** Amar Singh Chamkila — the akhaara recordings, one song per upload. */
+const CHAMKILA: readonly Track[] = [
+  {
+    id: "pehle-lalkare-naal",
+    title: "Pehle Lalkare Naal",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "0MMvZ6j2mxc",
+  },
+  {
+    id: "gora-gora-rang",
+    title: "Gora Gora Rang",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "IdCZ-tZNrl0",
+  },
+  {
+    id: "gaddi-te-likha-le",
+    title: "Gaddi Te Likha Le Mera Naa",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "L8Ug596f92k",
+  },
+  {
+    id: "aaj-chakka-jam-karata",
+    title: "Aaj Chakka Jam Karata",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "29eaPdoN6j4",
+  },
+  {
+    id: "laija-kithe-door",
+    title: "Laija Kithe Door",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "ozV0df8BYOw",
+  },
+  {
+    id: "theke-te-baitha-rehanda",
+    title: "Theke Te Baitha Rehanda",
+    artist: "Amar Singh Chamkila & Surinder Sonia",
+    source: "2M00lRnmN3E",
+  },
+  {
+    id: "kurti-sat-rang-di",
+    title: "Kurti Sat Rang Di",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "8islsVeYi2k",
+  },
+  {
+    id: "kal-bhaven-jind-kadh-layen",
+    title: "Kal Bhaven Jind Kadh Layen",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "Egd6__JBByM",
+  },
+  {
+    id: "kan-kar-gal-sun-makhna",
+    title: "Kan Kar Gal Sun Makhna",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "83oaztNnR30",
+  },
+  {
+    id: "lal-pari",
+    title: "Lal Pari",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "WkMDjInY4Tg",
+  },
+  {
+    id: "chaska-pe-geya",
+    title: "Chaska Pe Geya",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "FhoNMrG_Alc",
+  },
+  {
+    id: "sade-pind-da-riwaj-niara",
+    title: "Sade Pind Da Riwaj Niara",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "zPmRv2k0W_0",
+  },
+  {
+    id: "do-koh-to-purje",
+    title: "Do Koh To Purje",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "TGuOX2PAKRA",
+  },
+  {
+    id: "sharbat-wango-ghut-bhar-lai",
+    title: "Sharbat Wango Ghut Bhar Lai",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "hwiIw6psjvQ",
+  },
+  {
+    id: "bahan-wich-bhabi",
+    title: "Bahan Wich Bhabi",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "0_8Lesv7CFs",
+  },
+  {
+    id: "kach-de-glass-wich",
+    title: "Kach De Glass Wich",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "WuO8LXdD7dg",
+  },
+  {
+    id: "kar-yaad-kurhe",
+    title: "Kar Yaad Kurhe",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "ZjFuJO7HJYc",
+  },
+  {
+    id: "gabroo-ho-len-de",
+    title: "Gabroo Ho Len De",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "n2T9zPzt05o",
+  },
+  {
+    id: "chak-doon-ghade-ton",
+    title: "Chak Doon Ghade Ton",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "pJAEc4ZxwAY",
+  },
+  {
+    id: "main-sarab-ban-gayi",
+    title: "Main Sarab Ban Gayi",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "wq8OtolIpTQ",
+  },
+  {
+    id: "amli-de-larh-lake",
+    title: "Amli De Larh Lake",
+    artist: "Amar Singh Chamkila & Amarjot",
+    source: "8SOfk6bZKuA",
+  },
+];
+
+/** Surjit Bindrakhia — the hek every Punjabi wedding still runs on. */
+const BINDRAKHIA: readonly Track[] = [
+  {
+    id: "jatt-di-pasand",
+    title: "Jatt Di Pasand",
+    artist: "Surjit Bindrakhia",
+    source: "u43CZhZgGJk",
+  },
+  {
+    id: "mukhda-dekh-ke",
+    title: "Mukhda Dekh Ke",
+    artist: "Surjit Bindrakhia",
+    source: "6zj1LDUuOq8",
+  },
+  {
+    id: "tera-yaar-bolda",
+    title: "Tera Yaar Bolda",
+    artist: "Surjit Bindrakhia",
+    source: "tGiJSnwBwDQ",
+  },
+  {
+    id: "dupatta-tera-satrang-da",
+    title: "Dupatta Tera Satrang Da",
+    artist: "Surjit Bindrakhia",
+    source: "jjcNS8aKU1A",
+  },
+  {
+    id: "lakk-tunoo-tunoo",
+    title: "Lakk Tunoo Tunoo",
+    artist: "Surjit Bindrakhia",
+    source: "TvyAUmw5c6E",
+  },
+  {
+    id: "latoo-deor-de-chubare-te",
+    title: "Latoo Deor De Chubare Te",
+    artist: "Surjit Bindrakhia",
+    source: "I4uf3F8xmFA",
+  },
+];
+
+/** Sharry Maan — including the one that is actually about a truck. */
+/** Sharry Maan, including the one that is actually about a truck. */
+const SHARRY_MAAN: readonly Track[] = [
+  {
+    id: "hostel",
+    title: "Hostel",
+    artist: "Sharry Maan",
+    source: "IuO6uUXBJfE",
+  },
+  {
+    id: "yaar-anmulle",
+    title: "Yaar Anmulle",
+    artist: "Sharry Maan",
+    source: "iiQmg8Sldu8",
+  },
+  {
+    id: "3-peg",
+    title: "3 Peg",
+    artist: "Sharry Maan",
+    year: 2016,
+    source: "fS2RIAMlKwA",
+  },
+  {
+    id: "munda-bhal-di",
+    title: "Munda Bhal Di",
+    artist: "Sharry Maan",
+    source: "wBlTNeuHOUs",
+  },
+  {
+    id: "transportiye",
+    title: "Transportiye",
+    artist: "Sharry Maan",
+    source: "E4A0I34f94s",
+  },
+  {
+    id: "naukar",
+    title: "Naukar",
+    artist: "Sharry Maan",
+    year: 2019,
+    source: "uiicyJyjKAs",
+  },
+  {
+    id: "hawa-de-bulle",
+    title: "Hawa De Bulle",
+    artist: "Sharry Maan",
+    source: "AQXS9q94cCA",
+  },
+];
+
+/** Gippy Grewal, back when he was still a singer with a film or two. */
+/** Gippy Grewal, back when he was still a singer with a film or two. */
+const GIPPY_GREWAL: readonly Track[] = [
+  {
+    id: "phulkari",
+    title: "Phulkari",
+    artist: "Gippy Grewal",
+    film: "De De Gehra",
+    source: "Ti2pfgm6uos",
+  },
+  {
+    id: "supna",
+    title: "Supna",
+    artist: "Gippy Grewal",
+    film: "Jihne Mera Dil Luteya",
+    year: 2011,
+    source: "Hj3LHCr4ieA",
+  },
+  {
+    id: "angreji-beat",
+    title: "Angreji Beat",
+    artist: "Gippy Grewal & Yo Yo Honey Singh",
+    source: "wSOnIVKh6gU",
+  },
+  {
+    id: "mulhajedaariyan",
+    title: "Mulhajedaariyan",
+    artist: "Gippy Grewal",
+    year: 2012,
+    source: "Auw1qxPl1Qc",
+  },
+  {
+    id: "ghar-di-sharab",
+    title: "Ghar Di Sharab",
+    artist: "Gippy Grewal",
+    film: "Bhaji In Problem",
+    year: 2013,
+    source: "q5l554xTU4U",
+  },
+];
+
+/** Bhupinder Gill — Battua, and the other one with Miss Neelam. */
+const BHUPINDER_GILL: readonly Track[] = [
+  {
+    id: "battua",
+    title: "Battua",
+    artist: "Bhupinder Gill",
+    source: "sHrO5ep81Do",
+  },
+  {
+    id: "chan-chan",
+    title: "Chan Chan",
+    artist: "Bhupinder Gill & Miss Neelam",
+    film: "De De Gehra",
+    source: "ffClNLKNUSA",
+  },
+];
+
+/** Jazzy B and Sukshinder Shinda — Punjabi folk through a UK bassbin. */
+const JAZZY_B: readonly Track[] = [
+  {
+    id: "naag",
+    title: "Naag",
+    artist: "Jazzy B & Sukshinder Shinda",
+    source: "BQXZfv1fnA4",
+  },
+  {
+    id: "jawani",
+    title: "Jawani",
+    artist: "Jazzy B & Sukshinder Shinda",
+    source: "brKedlb8_rs",
+  },
+  {
+    id: "tera-roop",
+    title: "Tera Roop",
+    artist: "Jazzy B & Sukshinder Shinda",
+    source: "D1MTweQHKrw",
+  },
+  {
+    id: "soorma",
+    title: "Soorma",
+    artist: "Jazzy B & Sukshinder Shinda",
+    source: "UL03D6bLryw",
+  },
+  {
+    id: "dil-lutiya",
+    title: "Dil Lutiya",
+    artist: "Jazzy B & Apache Indian",
+    source: "TI7RQO2cuh0",
+  },
+  {
+    id: "bach-ke",
+    title: "Bach Ke",
+    artist: "Jazzy B & Sukshinder Shinda",
+    source: "ZIOUDeKQyns",
+  },
+  {
+    id: "chug-de-punjabi",
+    title: "Chug De Punjabi",
+    artist: "Jazzy B",
+    film: "Teesri Aankh",
+    source: "BzbrqigAXU0",
+  },
+];
+
+/** Babbu Maan. */
+const BABBU_MAAN: readonly Track[] = [
+  {
+    id: "mitran-nu-shounk-hathiyaran-da",
+    title: "Mitran Nu Shounk Hathiyaran Da",
+    artist: "Babbu Maan",
+    source: "QbPjWxNnLQk",
+  },
+  {
+    id: "saun-di-jhadi",
+    title: "Saun Di Jhadi",
+    artist: "Babbu Maan",
+    film: "Saun Di Jhadi",
+    source: "Iv7ls3mzPOU",
+  },
+  {
+    id: "kabza",
+    title: "Kabza",
+    artist: "Babbu Maan",
+    film: "Saun Di Jhadi",
+    source: "w5dELB2O15E",
+  },
+  {
+    id: "mitran-di-chatri",
+    title: "Mitran Di Chatri",
+    artist: "Babbu Maan",
+    film: "Pyaas",
+    source: "fpnJPH5t79Y",
+  },
+  {
+    id: "laarian-de-naal",
+    title: "Laarian De Naal",
+    artist: "Babbu Maan",
+    film: "Pyaas",
+    source: "jZWF3BZwVCY",
+  },
+  {
+    id: "bhangra-paun-de",
+    title: "Bhangra Paun De",
+    artist: "Babbu Maan",
+    film: "Hashar",
+    source: "3LqRdCHAsMg",
+  },
+];
+
+/** Diljit Dosanjh, before the stadiums. */
+const DILJIT: readonly Track[] = [
+  {
+    id: "5-taara",
+    title: "5 Taara",
+    artist: "Diljit Dosanjh",
+    year: 2015,
+    source: "uSKinFh8DTo",
+  },
+  {
+    id: "lak-28-kudi-da",
+    title: "Lak 28 Kudi Da",
+    artist: "Diljit Dosanjh & Yo Yo Honey Singh",
+    source: "LUXrfuOugnA",
+  },
+  {
+    id: "buggi",
+    title: "Buggi",
+    artist: "Diljit Dosanjh",
+    film: "Jatt & Juliet 2",
+    year: 2013,
+    source: "uzIyI82awsc",
+  },
+  {
+    id: "main-fan-bhagat-singh-da",
+    title: "Main Fan Bhagat Singh Da",
+    artist: "Diljit Dosanjh",
+    film: "Bikkar Bai Senti Mental",
+    source: "gDE0SLOw-OI",
+  },
+];
+
+/** Geeta Zaildar. */
+const GEETA_ZAILDAR: readonly Track[] = [
+  {
+    id: "chak-chak-ke",
+    title: "Chak Chak Ke",
+    artist: "Geeta Zaildar & Aman Hayer",
+    source: "7lN9KmB4hxo",
+  },
+  {
+    id: "pegg",
+    title: "Pegg",
+    artist: "Geeta Zaildar",
+    source: "_xaMGJXFgqE",
+  },
+  {
+    id: "wrong-decision",
+    title: "Wrong Decision",
+    artist: "Geeta Zaildar & Gurlej Akhtar",
+    source: "5UmuxuBNWtc",
+  },
+  {
+    id: "blackia",
+    title: "Blackia",
+    artist: "Geeta Zaildar & Gurlej Akhtar",
+    source: "VcrDgF79uOs",
+  },
+  {
+    id: "billo-thumka-laga",
+    title: "Billo Thumka Laga",
+    artist: "Geeta Zaildar",
+    source: "vuWuUxhvz34",
+  },
+];
+
+/**
+ * The requests.
+ *
+ * These lead the band, in the order they were asked for, and they sit out the
+ * deal below — an order someone chose by hand is not ours to shuffle.
+ */
+const REQUESTS: readonly Track[] = [
+  {
+    id: "gaddi-shokeen-jatt-di",
+    title: "Gaddi Shokeen Jatt Di",
+    artist: "Pamma & Meenakshi",
+    source: "25std5coxds",
+  },
+  {
+    id: "jatt-saari-umar",
+    title: "Jatt Saari Umar",
+    artist: "Sippy Gill",
+    film: "Jatt Kuwara",
+    source: "mqu56IAB90A",
+  },
+  {
+    id: "yaari-da-vasta",
+    title: "Yaari Da Vasta",
+    artist: "Sharry Maan",
+    source: "B63ogQKn31c",
+  },
+  {
+    id: "yankne",
+    title: "Yankne",
+    artist: "Sharry Maan",
+    source: "MzXls-n5yNg",
+  },
+  {
+    id: "lancer",
+    title: "Lancer",
+    artist: "Jassi Gill",
+    film: "Bachmate 2",
+    source: "S9UwtIKlGVI",
+  },
+  {
+    id: "ikk-munda",
+    title: "Ikk Munda",
+    artist: "Sheera Jasvir",
+    source: "zqu0Q-ur5g4",
+  },
+  {
+    id: "seeti-maar-ke",
+    title: "Seeti Maar Ke",
+    artist: "Miss Pooja & Gagandeep",
+    source: "hPgXj4mu6Fo",
+  },
+  {
+    id: "chandigarh-waliye",
+    title: "Chandigarh Waliye",
+    artist: "Sharry Maan",
+    film: "Aate Di Chiri",
+    source: "LLn4MIJfjVk",
+  },
+  {
+    id: "bapu-zimidar",
+    title: "Bapu Zimidar",
+    artist: "Jassie Gill",
+    source: "7KYw3Gs2zUM",
+  },
+  {
+    id: "time-table",
+    title: "Time Table",
+    artist: "Kulwinder Billa",
+    source: "6tpLUszWs9M",
+  },
+  {
+    id: "time-table-2",
+    title: "Time Table 2",
+    artist: "Kulwinder Billa",
+    year: 2015,
+    source: "ZFybffBA8Oc",
+  },
+  {
+    id: "farishtay",
+    title: "Farishtay",
+    artist: "Wazir Patar & Mitika Kanwar",
+    source: "qtj_mZ-Ijtk",
+  },
+  {
+    id: "alrhaan-kuaariaan",
+    title: "Alrhaan Kuaariaan",
+    artist: "Diljit Dosanjh",
+    film: "Smile",
+    source: "GrPQlFU2S7I",
+  },
+  {
+    id: "dildarian",
+    title: "Dildarian",
+    artist: "Amrinder Gill",
+    source: "MDwgUE-TBVY",
+  },
+  {
+    id: "apa-fer-milaange",
+    title: "Apa Fer Milaange",
+    artist: "Savi Kahlon",
+    source: "7uyvNBmL7d4",
+  },
+  {
+    id: "sanu-nehar-wale-pul",
+    title: "Sanu Nehar Wale Pul Te Bula Ke",
+    artist: "Noor Jehan",
+    source: "ApC2TxFdoZE",
+  },
+  {
+    id: "armani",
+    title: "Armani",
+    artist: "Harman Chahal",
+    year: 2013,
+    source: "XUh2KNntjD0",
+  },
+  {
+    id: "sohne-mukhde-da",
+    title: "Sohne Mukhde Da",
+    artist: "Sharry Maan",
+    film: "Aate Di Chiri",
+    source: "lKB2AoDopM4",
+  },
+  {
+    id: "rang-sanwla",
+    title: "Rang Sanwla",
+    artist: "Aarsh Benipal",
+    year: 2016,
+    source: "5gOPFW8F78E",
+  },
+];
+
+/**
+ * Deals the singers out instead of playing them in blocks.
+ *
+ * The runs above are grouped by singer because that is how a playlist is read
+ * and edited. Played in that order the station would be twenty-one Chamkila
+ * songs and then everybody else, which is the one thing a radio must not do.
+ * So they are dealt into a single rotation: each singer's songs are notionally
+ * spread across the whole playlist by share — hold a third of it and you come
+ * round every third track — and each slot goes to whoever is most overdue,
+ * skipping whoever just played. Spreading by share rather than by turn is what
+ * keeps the deepest catalogue from clumping at the front without burying the
+ * shallowest at the back.
+ *
+ * Deterministic on purpose: `Math.random` here would deal one order on the
+ * server and another on the client, and hydration would tear.
+ */
+function deal(runs: ReadonlyArray<readonly Track[]>): readonly Track[] {
+  const total = runs.reduce((sum, run) => sum + run.length, 0);
+  const played = runs.map(() => 0);
+  const order: Track[] = [];
+  let last = -1;
+
+  while (order.length < total) {
+    const open = runs.filter((run, at) => played[at] < run.length).length;
+
+    let pick = -1;
+    let soonest = Infinity;
+    for (let at = 0; at < runs.length; at++) {
+      if (played[at] === runs[at].length) continue;
+      if (at === last && open > 1) continue;
+      const due = ((played[at] + 0.5) * total) / runs[at].length;
+      if (due < soonest) {
+        soonest = due;
+        pick = at;
+      }
+    }
+
+    order.push(runs[pick][played[pick]++]);
+    last = pick;
+  }
+
+  return order;
+}
+
+const PUNJABI_TRACKS: readonly Track[] = [
+  ...REQUESTS,
+  ...deal([
+    CHAMKILA,
+    BINDRAKHIA,
+    SHARRY_MAAN,
+    GIPPY_GREWAL,
+    BHUPINDER_GILL,
+    JAZZY_B,
+    BABBU_MAAN,
+    DILJIT,
+    GEETA_ZAILDAR,
+  ]),
+];
+
+/**
+ * The dial. Two bands, and the switch on the deck moves between them — the
+ * frequency in the callsign is the one thing on the page that says which.
+ */
+export const STATIONS: readonly Station[] = [
+  {
+    id: "hindi",
+    labels: ["Hindi", "हिंदी"],
+    name: "Hindi",
+    frequency: "93.5",
+    tracks: HINDI_TRACKS,
+  },
+  {
+    id: "punjabi",
+    labels: ["Punjabi", "ਪੰਜਾਬੀ"],
+    name: "Punjabi",
+    frequency: "95.7",
+    tracks: PUNJABI_TRACKS,
+  },
+];
+
 export const TAILGATE = {
   SLOGAN: ["सावधानी हटी", "सब्ज़ी-पूड़ी बंटी"],
   FLANK: ["लोन भरना बाकी है", "थोड़ा दूरी बनाये रखे"],
@@ -585,10 +1241,13 @@ export const HORN = {
 export const UI = {
   /** How long the nudge lingers after the sound comes on, so it can fade. */
   HINT_EXIT_MS: 700,
+  /** How long each spelling holds on the band switch before it turns over. */
+  BAND_FLIP_MS: 2600,
 } as const;
 
 export const STORAGE_KEYS = {
   VOLUME: "truckwala:volume",
+  STATION: "truckwala:station",
   MUTED: "truckwala:muted",
   RESUME: "truckwala:resume",
 } as const;
@@ -608,6 +1267,7 @@ export const KEY_BINDINGS = {
   KeyP: "previous",
   Comma: "previous",
   KeyM: "mute",
+  KeyB: "band",
 } as const;
 
 export type KeyIntent = (typeof KEY_BINDINGS)[keyof typeof KEY_BINDINGS];

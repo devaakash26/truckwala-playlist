@@ -1,10 +1,13 @@
 # Truckwala FM
 
-A one-station radio. 90s Hindi film songs play in order over a cinematic
+A two-band radio. 90s Hindi film songs on 93.5, and old Punjabi on 95.7 —
+Chamkila, Surjit Bindrakhia, Sharry Maan, Gippy Grewal, Jazzy B, Babbu Maan,
+Diljit Dosanjh and Geeta Zaildar, dealt into one rotation rather than played
+singer by singer, behind a block of requests that go first. Either band runs over a cinematic
 truck-on-the-highway backdrop that follows the listener's own clock — dawn, day,
 dusk, night. There is no track list and no search, on purpose: the only controls
-are previous, rewind, play/pause, forward, next, and a record that turns while
-the station is live.
+are the band switch, previous, rewind, play/pause, forward, next, and a record
+that turns while the station is live.
 
 ```bash
 npm run dev     # http://localhost:3000
@@ -19,6 +22,29 @@ size is the point — YouTube's adaptive bitrate ladder keys off the rendered
 player size, so a small surface pins playback near 144p and we effectively pay
 for audio only. `forceLowestQuality` re-asserts this whenever YouTube tries to
 re-ladder.
+
+**The band switch** is two playlists behind one deck. Its labels turn on a
+timer — the band's name, then its own script — which is decoration only: the
+name a screen reader is given never turns, and `prefers-reduced-motion` stops
+the timer rather than merely hiding the animation. Turning it is a user
+gesture like any other, so it doubles as the autoplay unlock; each band
+remembers the track it was left on, so switching back resumes rather than
+restarting, and the chosen band is remembered per browser. The frequency in the
+callsign is the readout — it is the one thing on the page that says which band
+you are on, which is why it is live rather than a constant.
+
+**The Punjabi band is dealt, not concatenated.** `REQUESTS` leads it, in the
+order those songs were asked for and untouched by any of what follows — an order
+someone chose by hand is not the code's to shuffle. Behind it the runs are
+written one singer per block, because that is how a playlist is read and edited,
+but a station that played *those* in order would be twenty-one Chamkila songs
+and then everybody else. So `deal` spreads each singer's run across the whole playlist by share —
+hold a third of it and you come round every third track — and gives each slot to
+whoever is most overdue, skipping whoever just played. Chamkila has three times
+anyone else's catalogue and still lands about every third track rather than
+every other one, which is what dealing by share buys over dealing by turn. It is
+deterministic on purpose: `Math.random` would deal one order on the server and
+another on the client, and hydration would tear.
 
 **The gate** exists because every browser blocks audio until a real click. The
 player is created and the first track *cued* on load; pressing the horn flips
@@ -63,11 +89,22 @@ couple of seconds rather than snapping.
 
 Everything tunable lives in [`lib/constants.ts`](lib/constants.ts).
 
-- **Playlist** — edit `TRACKS`. `source` takes a full YouTube URL of any shape
-  (`watch`, `youtu.be`, `embed`, `shorts`) or a bare 11-character id. `artist`,
-  `film` and `year` are optional and simply omitted from the credit line when
-  absent — a missing credit beats a wrong one. Add `startAt` to skip an intro. A
-  video with embedding disabled is detected and skipped automatically.
+- **Playlist** — edit `STATIONS`; each band owns its own tracks, and the Punjabi
+  one is `REQUESTS` followed by the per-singer runs put through `deal`. Anything
+  that has to play in a particular order belongs in the first list; anything that
+  just has to play belongs in a run. `source` takes a full
+  YouTube URL of any shape (`watch`, `youtu.be`, `embed`, `shorts`) or a bare
+  11-character id. `artist`, `film` and `year` are optional and simply omitted
+  from the credit line when absent — a missing credit beats a wrong one. Add
+  `startAt` to skip an intro. Track ids must be unique across both bands, since
+  that is what the bookmark is keyed on. A video with embedding disabled is
+  detected and skipped automatically — though it is worth checking before
+  adding, since a dead embed is a gap in the hour rather than an error anyone
+  sees.
+- **Bands** — `STATIONS` again: `label` is painted on the switch, in the language
+  of the songs; `frequency` is what the callsign shows. Adding a third entry
+  needs no other change — the switch and the `B` key both size themselves to the
+  list.
 - **Clips** — see [`public/scenes/README.md`](public/scenes/README.md) for the
   shot list, the generation prompts and encoding specs. Drop the files in and
   they are picked up with no code change.
@@ -103,6 +140,7 @@ Everything tunable lives in [`lib/constants.ts`](lib/constants.ts).
 | `P` `N` (or `,` `.`) | previous / next track |
 | `↑` `↓` | volume |
 | `M` | mute |
+| `B` | switch band |
 
 Media keys and the lock screen work too, where the browser lets the top document
 own the media session.

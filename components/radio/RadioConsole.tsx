@@ -4,10 +4,14 @@ import { useKeyboardControls } from "@/hooks/useKeyboardControls";
 import { useMediaSession } from "@/hooks/useMediaSession";
 import { STATION } from "@/lib/constants";
 import { AudioHint } from "@/components/AudioHint";
+import { BandSwitch } from "@/components/radio/BandSwitch";
 import { useIntro } from "@/components/intro/IntroProvider";
 import { Disc } from "@/components/radio/Disc";
 import { HornButton } from "@/components/radio/HornButton";
-import { useCurrentTrack, useRadioState } from "@/components/radio/RadioProvider";
+import {
+  useCurrentTrack,
+  useRadioState,
+} from "@/components/radio/RadioProvider";
 import { SeekBar } from "@/components/radio/SeekBar";
 import { TransportControls } from "@/components/radio/TransportControls";
 import { VolumeControl } from "@/components/radio/VolumeControl";
@@ -21,10 +25,15 @@ export function RadioConsole() {
 
   const track = useCurrentTrack();
   const { error } = useRadioState();
-  const credits = [track.artist, track.film, track.year].filter(Boolean).join("  ·  ");
+  const credits = [track.artist, track.film, track.year]
+    .filter(Boolean)
+    .join("  ·  ");
 
   return (
-    <section className="deck" aria-label={`${STATION.NAME} ${STATION.SUFFIX} player`}>
+    <section
+      className="deck"
+      aria-label={`${STATION.NAME} ${STATION.SUFFIX} player`}
+    >
       {/* Inside the deck, because that is what it is anchored against — from
           the stage it resolved to the full stage height and floated off the top
           of the page, which is why it was invisible the first time round. */}
@@ -32,9 +41,12 @@ export function RadioConsole() {
       <Disc />
 
       <div className="deck__body">
-        <h2 className="deck__title" title={track.title}>
-          {track.title}
-        </h2>
+        <div className="deck__head">
+          <h2 className="deck__title" title={track.title}>
+            {track.title}
+          </h2>
+          <BandSwitch />
+        </div>
         <p className="deck__credits" data-error={error !== null}>
           {error ?? credits}
         </p>

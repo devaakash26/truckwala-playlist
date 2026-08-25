@@ -13,14 +13,24 @@ import {
   type ReactNode,
 } from "react";
 
-import { PLAYER, STORAGE_KEYS, TRACKS, YOUTUBE } from "@/lib/constants";
+import { PLAYER, STORAGE_KEYS, YOUTUBE } from "@/lib/constants";
 import { clamp } from "@/lib/format";
 import { introWillPlay } from "@/lib/intro";
 import { readResume, writeResume } from "@/lib/resume";
+import {
+  DEFAULT_STATION_ID,
+  getStation,
+  nextStationId,
+  readStation,
+  stationTracks,
+  writeStation,
+} from "@/lib/station";
 import type {
   PlaybackStatus,
   RadioActions,
   RadioState,
+  Station,
+  StationId,
   Track,
 } from "@/lib/types";
 import {
@@ -49,6 +59,7 @@ const STATUS_BY_PLAYER_STATE: Record<number, PlaybackStatus> = {
 const WAKE_EVENTS = ["pointerdown", "keydown", "touchstart"] as const;
 
 const INITIAL_STATE: RadioState = {
+  stationId: DEFAULT_STATION_ID,
   index: 0,
   status: "connecting",
   duration: 0,
@@ -65,7 +76,8 @@ const INITIAL_STATE: RadioState = {
 type Action =
   | { type: "ready" }
   | { type: "unlock"; silent: boolean }
-  | { type: "restore"; index: number }
+  | { type: "restore"; stationId: StationId; index: number }
+  | { type: "station"; stationId: StationId; index: number }
   | { type: "silence" }
   | { type: "audible" }
   | { type: "step"; delta: number }
@@ -91,7 +103,20 @@ function reducer(state: RadioState, action: Action): RadioState {
           };
 
     case "restore":
-      return { ...state, index: action.index };
+      return { ...state, stationId: action.stationId, index: action.index };
+
+    case "station":
+      if (action.stationId === state.stationId) return state;
+      return {
+        ...state,
+        stationId: action.stationId,
+        index: action.index,
+        duration: 0,
+        error: null,
+        errorStreak: 0,
+        unlocked: true,
+        status: "buffering",
+      };
 
     case "silence":
       return state.silenced ? state : { ...state, silenced: true };
@@ -100,8 +125,8 @@ function reducer(state: RadioState, action: Action): RadioState {
       return state.released ? state : { ...state, silenced: false, released: true };
 
     case "step": {
-      const index =
-        (state.index + action.delta + TRACKS.length) % TRACKS.length;
+      const { length } = stationTracks(state.stationId);
+      const index = (state.index + action.delta + length) % length;
       // Stepping is always a user gesture, so it doubles as the autoplay unlock.
       return {
         ...state,
@@ -173,7 +198,12 @@ export const useRadioActions = () =>
 export const useRadioProgress = () => useContext(ProgressContext);
 
 export function useCurrentTrack(): Track {
-  return TRACKS[useRadioState().index];
+  const { stationId, index } = useRadioState();
+  return stationTracks(stationId)[index];
+}
+
+export function useCurrentStation(): Station {
+  return getStation(useRadioState().stationId);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -183,15 +213,22 @@ export function useCurrentTrack(): Track {
 export function RadioProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [progress, setProgress] = useState(0);
-  const [progressOwner, setProgressOwner] = useState(state.index);
+  // Keyed by band as well as index: the same index is a different song on the
+  // other band, and the seek bar must not carry the old position across.
+  const [progressOwner, setProgressOwner] = useState(
+    `${state.stationId}:${state.index}`,
+  );
   const playerRef = useRef<YTPlayer | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
   const pendingResume = useRef(0);
   const startedFrom = useRef(0);
+  /** Where each band was left, so coming back to one resumes rather than restarts. */
+  const lastIndex = useRef<Partial<Record<StationId, number>>>({});
 
-  if (progressOwner !== state.index) {
-    setProgressOwner(state.index);
-    setProgress(TRACKS[state.index].startAt ?? 0);
+  const owner = `${state.stationId}:${state.index}`;
+  if (progressOwner !== owner) {
+    setProgressOwner(owner);
+    setProgress(stationTracks(state.stationId)[state.index].startAt ?? 0);
   }
 
 
@@ -219,15 +256,19 @@ export function RadioProvider({ children }: { children: ReactNode }) {
               playerRef.current = event.target;
               dispatch({ type: "ready" });
 
-              // Pick up wherever they left off, before anything loads.
+              // Pick up wherever they left off, before anything loads: the band
+              // first, then the spot — and only if the bookmark belongs to that
+              // band, since a track id means nothing on the other one.
+              const stationId = readStation();
               const resume = readResume();
-              if (resume) {
-                const index = TRACKS.findIndex((track) => track.id === resume.id);
-                if (index >= 0) {
-                  pendingResume.current = resume.seconds;
-                  dispatch({ type: "restore", index });
-                }
-              }
+              const at =
+                resume && resume.station === stationId
+                  ? stationTracks(stationId).findIndex(
+                      (track) => track.id === resume.id,
+                    )
+                  : -1;
+              if (at >= 0 && resume) pendingResume.current = resume.seconds;
+              dispatch({ type: "restore", stationId, index: at >= 0 ? at : 0 });
 
               // Start muted, always. That is the one form of autoplay no
               // browser refuses, so the station is definitely rolling before we
@@ -295,7 +336,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     const player = playerRef.current;
     if (!player || !state.ready) return;
 
-    const track = TRACKS[state.index];
+    const track = stationTracks(state.stationId)[state.index];
     const videoId = parseVideoId(track.source);
     if (!videoId) {
       dispatch({
@@ -322,7 +363,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     // effect needs it. Listing it would reload the video the instant the sound
     // is turned on, stalling playback right at the moment you start listening.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.index, state.ready, state.unlocked]);
+  }, [state.stationId, state.index, state.ready, state.unlocked]);
 
   /* --- volume ------------------------------------------------------------ */
 
@@ -351,7 +392,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state.status !== "playing") return;
 
-    const trackId = TRACKS[state.index].id;
+    const stationId = state.stationId;
+    const trackId = stationTracks(stationId)[state.index].id;
     const bookmark = () => {
       // Only remember what was actually heard. Time that rolls by while the
       // browser is holding the sound back was never listened to, and saving it
@@ -359,7 +401,12 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       // you.
       if (state.silenced) return;
       const player = playerRef.current;
-      if (player) writeResume({ id: trackId, seconds: player.getCurrentTime() });
+      if (player)
+        writeResume({
+          station: stationId,
+          id: trackId,
+          seconds: player.getCurrentTime(),
+        });
     };
 
     let sinceSave = 0;
@@ -385,20 +432,21 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pagehide", bookmark);
       bookmark();
     };
-  }, [state.status, state.index, state.silenced]);
+  }, [state.status, state.stationId, state.index, state.silenced]);
 
   /* --- skip past dead tracks --------------------------------------------- */
 
   useEffect(() => {
     // Once every track has failed in a row, stop — the network or an extension
     // is the problem, and looping the playlist just hammers it.
-    if (!state.error || state.errorStreak >= TRACKS.length) return;
+    if (!state.error || state.errorStreak >= stationTracks(state.stationId).length)
+      return;
     const id = window.setTimeout(
       () => dispatch({ type: "step", delta: 1 }),
       PLAYER.ERROR_SKIP_DELAY_MS,
     );
     return () => window.clearTimeout(id);
-  }, [state.error, state.errorStreak, state.index]);
+  }, [state.error, state.errorStreak, state.stationId, state.index]);
 
   /* --- actions ----------------------------------------------------------- */
 
@@ -432,8 +480,23 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     setProgress(target);
   }, []);
 
-  const actions = useMemo<RadioActions>(
-    () => ({
+  const actions = useMemo<RadioActions>(() => {
+    const selectStation = (stationId: StationId) => {
+      cancelDuck();
+      const from = stateRef.current.stationId;
+      if (stationId === from) return;
+      // Leave a marker on the band being left, so coming back to it picks up
+      // where it was rather than starting the playlist over.
+      lastIndex.current[from] = stateRef.current.index;
+      writeStation(stationId);
+      dispatch({
+        type: "station",
+        stationId,
+        index: lastIndex.current[stationId] ?? 0,
+      });
+    };
+
+    return {
       unlock: (silent = false) => dispatch({ type: "unlock", silent }),
 
       release: () => {
@@ -523,6 +586,11 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         else dispatch({ type: "step", delta: -1 });
       },
 
+      selectStation,
+
+      cycleStation: () =>
+        selectStation(nextStationId(stateRef.current.stationId)),
+
       seekBy: (seconds: number) => {
         const player = playerRef.current;
         if (player) seekTo(player.getCurrentTime() + seconds);
@@ -540,9 +608,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         if (performance.now() - wokeAt.current < PLAYER.WAKE_GRACE_MS) return;
         dispatch({ type: "setMuted", muted: !stateRef.current.muted });
       },
-    }),
-    [seekTo, cancelDuck],
-  );
+    };
+  }, [seekTo, cancelDuck]);
 
   /* --- turning the sound on ---------------------------------------------- */
 

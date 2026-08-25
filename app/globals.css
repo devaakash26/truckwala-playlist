@@ -463,6 +463,115 @@ body {
 .deck__credits[data-error="true"] {
   color: #ff8f7a;
 }
+/* Title and band switch share a line, the way a deck puts the dial next to the
+   display. The title is the part that gives way — min-width:0 is what lets it
+   ellipsis instead of shoving the switch off the edge. */
+.deck__head {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 14px);
+  min-width: 0;
+}
+.deck__head .deck__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Band switch                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.band {
+  position: relative;
+  flex: none;
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, #000 34%, transparent);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.5);
+}
+
+/* The lit position. It slides rather than cutting, because on a real deck the
+   switch is one thing moving between two stops — and the movement is what says
+   the labels are alternatives rather than two separate buttons. */
+.band__thumb {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--band-count));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  box-shadow: 0 0 16px var(--glow);
+  translate: calc(var(--band-at) * 100%) 0;
+  transition:
+    translate 0.34s cubic-bezier(0.2, 0.9, 0.25, 1),
+    background var(--phase-morph) ease;
+}
+
+.band__option {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  /* The faces turn on the x-axis, so they need somewhere to turn towards. */
+  perspective: 320px;
+  padding: 4px clamp(9px, 1.6vw, 13px);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--ink-dim);
+  transition: color 0.24s ease;
+}
+.band__option:hover {
+  color: var(--ink);
+}
+.band__option[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+/* One cell holding both the reserved width and the turning face, so the switch
+   keeps its size while the words change length underneath it. */
+.band__slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.band__ghost {
+  visibility: hidden;
+}
+.band__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  white-space: nowrap;
+  backface-visibility: hidden;
+  animation: band-turn 0.62s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+/* Three beats rather than a straight rotate: the old word drops away, the new
+   one comes up past level, and settles back — which is how a split-flap board
+   actually behaves, and why it reads as a mechanism instead of a fade. */
+@keyframes band-turn {
+  0% {
+    transform: rotateX(-90deg);
+    opacity: 0;
+  }
+  55% {
+    transform: rotateX(12deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(0deg);
+    opacity: 1;
+  }
+}
+
 .deck__row {
   display: flex;
   align-items: center;
@@ -865,6 +974,12 @@ body {
   .deck__title {
     font-size: 18px;
   }
+  /* The switch is the one control that must survive a phone — it is the only
+     way to reach half the station. It gives up padding, not presence. */
+  .band__option {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
   .deck__body {
     gap: 5px;
   }
@@ -1180,6 +1295,14 @@ input[type="range"]::-moz-range-thumb {
 @media (prefers-reduced-motion: reduce) {
   html {
     transition: none;
+  }
+  .band__thumb {
+    transition: none;
+  }
+  /* The words stop turning entirely — the component stops the timer too, so
+     this only covers the very first paint. */
+  .band__face {
+    animation: none;
   }
   .stars,
   .truck,

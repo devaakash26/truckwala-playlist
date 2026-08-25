@@ -19,6 +19,22 @@ export interface Track {
   readonly startAt?: number;
 }
 
+/** A band on the dial. Each one is a callsign, a frequency and a playlist. */
+export type StationId = "hindi" | "punjabi";
+
+export interface Station {
+  readonly id: StationId;
+  /**
+   * What the switch is painted with. More than one spelling and the switch
+   * turns between them — the band's own name, then its own script.
+   */
+  readonly labels: readonly string[];
+  /** Spoken to screen readers, where the script would not be read out. */
+  readonly name: string;
+  readonly frequency: string;
+  readonly tracks: readonly Track[];
+}
+
 export type PlaybackStatus =
   | "connecting"
   | "cued"
@@ -29,6 +45,7 @@ export type PlaybackStatus =
   | "error";
 
 export interface RadioState {
+  readonly stationId: StationId;
   readonly index: number;
   readonly status: PlaybackStatus;
   readonly duration: number;
@@ -50,6 +67,8 @@ export interface RadioActions {
   readonly unduck: () => void;
   readonly next: () => void;
   readonly previous: () => void;
+  readonly selectStation: (stationId: StationId) => void;
+  readonly cycleStation: () => void;
   readonly seekBy: (seconds: number) => void;
   readonly seekTo: (seconds: number) => void;
   readonly setVolume: (volume: number) => void;

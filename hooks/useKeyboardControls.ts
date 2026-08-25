@@ -15,6 +15,7 @@ const INTENT_HANDLERS: Record<KeyIntent, (actions: RadioActions) => void> = {
   volumeUp: (actions) => actions.nudgeVolume(PLAYER.VOLUME_STEP),
   volumeDown: (actions) => actions.nudgeVolume(-PLAYER.VOLUME_STEP),
   mute: (actions) => actions.toggleMute(),
+  band: (actions) => actions.cycleStation(),
 };
 
 const EDITABLE = new Set(["INPUT", "TEXTAREA", "SELECT"]);
